@@ -1,0 +1,45 @@
+{
+  "rules": {
+    "indent": [2, 2],
+    "quotes": [2, "single"],
+    "linebreak-style": [2, "unix"],
+    "semi": [2, "never"],
+    "no-unused-vars": [2, {"vars": "all", "args": "none"}],
+    "prefer-arrow-callback": [1],
+    "no-var": [0],
+    "no-self-compare": [2],
+    "curly": [2],
+    "yoda": [2],
+    "comma-dangle": [2, "never"],
+    "camelcase": [2],
+    "comma-spacing": [2, {"before": false, "after": true}],
+    "comma-style": [2, "last"],
+    "array-bracket-spacing": [2, "never"],
+    "eol-last": [2],
+    "space-before-function-paren": [2, "never"],
+    "dot-location": [2, "property"],
+    "space-unary-ops": [2],
+    "no-console": [0]
+  },
+  "env": {
+    "browser": true,
+    "node": true,
+    "mocha": true,
+    "es6": true
+  },
+  "globals": {
+    "angular": true,
+    "API_URL": true,
+    "PUSHER_KEY": true,
+    "Pusher": true,
+    "pusher": true,
+    "BigNumber": true,
+    "_": true
+  },
+  "parserOptions": {
+    "sourceType": "script",
+    "ecmaVersion": 6
+  },
+  "extends": "eslint:recommended",
+  "ignore": ["dist"]
+}
