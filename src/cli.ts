@@ -117,15 +117,15 @@ yargs
     }, async (argv: GenerateArgv) => {
         const name = argv.name || uuid.v4();
         const migrationDir = path.resolve(argv.migrationDir);
-        let migrationFilePath = migrationDir + '/' + name;
         let template: string = argv.template;
+        let ext: string;
         if (!template) {
 
             // detect tsconfig.json
             try {
                 const tsconfig = JSON.parse(await fs.readFile('tsconfig.json', 'utf8'));
                 const targetLessThanEs6 = tsconfig.compilerOptions && /^es[35]$/i.test(tsconfig.compilerOptions.target);
-                migrationFilePath += '.ts';
+                ext = 'ts';
                 template = [
                     '',
                     `export ${targetLessThanEs6 ? '' : 'async '}function up(): Promise<void> {`,
@@ -141,7 +141,7 @@ yargs
                 if (err.code !== 'ENOENT') {
                     throw err;
                 }
-                migrationFilePath += '.js';
+                ext = 'js';
                 template = [
                     '',
                     'export.up = function up() {',
@@ -155,8 +155,18 @@ yargs
                 ].join('\n');
             }
         }
+        const file = `${migrationDir}/${name}.${ext}`;
+        const relativePath = path.relative(process.cwd(), migrationDir);
+        // check if already exists
+        try {
+            await fs.access(file);
+            process.stderr.write('\nError: Migration file ' + relativePath + path.sep + chalk.bold.red(name) + '.' + ext + ' already exists\n');
+            return;
+        } catch (err) {
+            // continue
+        }
         await new Promise((resolve, reject) => mkdirp(migrationDir, err => err ? reject(err) : resolve()));
-        await fs.writeFile(migrationFilePath, template);
-        process.stdout.write(`\nCreated ${migrationDir}${chalk.white(name)}`);
+        await fs.writeFile(file, template);
+        process.stdout.write('\nCreated ' + relativePath + path.sep + chalk.bold.cyan(name) + '.' + ext + '\n');
     })
     .parse(process.argv);
