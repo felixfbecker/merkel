@@ -5,11 +5,11 @@ export interface MigrationData {
     /** The time the migration was run */
     applied: Date;
     /** The name of the migration that was run */
-    migration: string;
+    name: string;
 }
 
 export abstract class DbAdapter {
-    abstract connect(): Promise<void>;
+    abstract init(): Promise<void>;
     abstract getLastMigration(): Promise<MigrationData>;
-    abstract logMigration(name: string): Promise<void>;
+    abstract logMigration(name: string, head: string): Promise<void>;
 }

@@ -4,7 +4,7 @@ import {prepareCommitMessage} from './prepare-commit-message';
 import {getAdapterFromUrl} from './db';
 import * as fs from 'mz/fs';
 import * as chalk from 'chalk';
-import {getNewCommits, Commit} from './git';
+import {getNewCommits, Commit, getHead} from './git';
 import * as uuid from 'node-uuid';
 import mkdirp = require('mkdirp');
 import * as path from 'path';
@@ -22,7 +22,23 @@ interface GenerateArgv extends Argv {
 
 interface MigrateArgv extends Argv {
     db: string;
+    confirm?: boolean;
 }
+
+interface UpArgv extends Argv {
+    migrations?: string[];
+    db: string;
+}
+
+interface DownArgv extends Argv {
+    db: string;
+}
+
+const dbOption = {
+    description: 'The connection URL for the database',
+    nargs: 1,
+    require: true
+};
 
 yargs
     .env('MERKEL')
@@ -77,16 +93,19 @@ yargs
             type: 'boolean',
             description: 'Ask for confirmation before beginning the actual migration'
         },
-        db: {
-            description: 'The connection URL for the database',
-            nargs: 1,
-            require: true
-        }
+        db: dbOption
     }, async (argv: MigrateArgv) => {
         const adapter = getAdapterFromUrl(argv.db);
-        await adapter.connect();
+        await adapter.init();
         const lastMigration = await adapter.getLastMigration();
-        const commits = await getNewCommits(argv.migrationDir, lastMigration.head);
+        process.stdout.write('\n');
+        if (lastMigration) {
+            process.stdout.write(`The last migration run was ${chalk.white.bold(lastMigration.name)} on ${lastMigration.applied}\n`);
+        } else {
+            process.stdout.write('No migrations run yet\n');
+        }
+        process.stdout.write('\n');
+        const commits = await getNewCommits(argv.migrationDir, lastMigration && lastMigration.head);
         const relevantCommits = commits.filter(commit => commit.migrations.length > 0);
         const migrationCount = relevantCommits.reduce((prev: number, curr: Commit) => prev + curr.migrations.length, relevantCommits[0].migrations.length);
         process.stdout.write(chalk.white.bold.underline(`${migrationCount} new migrations:\n`));
@@ -98,34 +117,73 @@ yargs
                 } else if (migration.type === 'down') {
                     process.stdout.write(`${chalk.bgRed('▼')} ${migration.name}\n`);
                 } else {
-                    process.stderr.write(`Unknown command ${migration.name}`);
+                    process.stderr.write(chalk.dim.red(`Error: Command ${migration.type} cannot be run from a commit message`));
                 }
             }
             process.stdout.write(`\n`);
         }
         process.stdout.write('\n\n');
     })
+    .command('up <migrations..>', 'Migrates specific migrations up', { db: dbOption }, async (argv: UpArgv) => {
+        const head = await getHead();
+        const adapter = getAdapterFromUrl(argv.db);
+        await adapter.init();
+        for (const migration of argv.migrations) {
+            let up: Function;
+            try {
+                up = require(process.cwd() + '/' + argv.migrationDir).up;
+            } catch (err) {
+                process.stderr.write(chalk.red('\nError: Migration file ' + argv.migrationDir + path.sep + chalk.bold(migration) + '.js does not exist\n'));
+                process.exit(1);
+                return;
+            }
+            if (typeof up !== 'function') {
+                process.stderr.write(chalk.red('\nError: Migration file ' + argv.migrationDir + path.sep + chalk.bold(migration) + '.js does not export an up function\n'));
+                process.exit(1);
+            }
+            process.stdout.write(`Migrating ${migration}...`);
+            try {
+                await Promise.resolve(up());
+            } catch (err) {
+                process.stderr.write('\n' + chalk.red(chalk.bold('Migration error: ') + err.stack || err));
+                process.exit(1);
+            }
+            process.stdout.write(chalk.green(' SUCCESS\n'));
+            await adapter.logMigration(migration, head);
+        }
+        process.stdout.write('\n' + chalk.green.bold('Migration successful') + '\n');
+    })
     .command('generate', 'Generates a new migration file', {
         name: {
             alias: 'n',
-            nargs: 1
+            nargs: 1,
+            description: 'The name of the migration file'
         },
         template: {
             alias: 't',
-            nargs: 1
+            nargs: 1,
+            description: 'The path to a custom template file that should be used'
         }
     }, async (argv: GenerateArgv) => {
         const name = argv.name || uuid.v4();
         const migrationDir = path.resolve(argv.migrationDir);
-        let template: string = argv.template;
-        let ext: string;
-        if (!template) {
-
+        let template: string;
+        let ext: string = '';
+        if (argv.template) {
+            try {
+                template = await fs.readFile(argv.template, 'utf8');
+            } catch (err) {
+                if (err.code !== 'ENOENT') {
+                    throw err;
+                }
+                process.stderr.write(chalk.red('\nCould not find template ' + argv.template + '\n'));
+            }
+        } else {
             // detect tsconfig.json
             try {
                 const tsconfig = JSON.parse(await fs.readFile('tsconfig.json', 'utf8'));
                 const targetLessThanEs6 = tsconfig.compilerOptions && /^es[35]$/i.test(tsconfig.compilerOptions.target);
-                ext = 'ts';
+                ext = '.ts';
                 template = [
                     '',
                     `export ${targetLessThanEs6 ? '' : 'async '}function up(): Promise<void> {`,
@@ -141,7 +199,7 @@ yargs
                 if (err.code !== 'ENOENT') {
                     throw err;
                 }
-                ext = 'js';
+                ext = '.js';
                 template = [
                     '',
                     'export.up = function up() {',
@@ -160,13 +218,13 @@ yargs
         // check if already exists
         try {
             await fs.access(file);
-            process.stderr.write('\nError: Migration file ' + relativePath + path.sep + chalk.bold.red(name) + '.' + ext + ' already exists\n');
-            return;
+            process.stderr.write(chalk.red('\nError: Migration file ' + relativePath + path.sep + chalk.bold(name) + ext + ' already exists\n'));
+            process.exit(1);
         } catch (err) {
             // continue
         }
         await new Promise((resolve, reject) => mkdirp(migrationDir, err => err ? reject(err) : resolve()));
         await fs.writeFile(file, template);
-        process.stdout.write('\nCreated ' + relativePath + path.sep + chalk.bold.cyan(name) + '.' + ext + '\n');
+        process.stdout.write('\nCreated ' + relativePath + path.sep + chalk.bold.cyan(name) + ext + '\n');
     })
     .parse(process.argv);

@@ -12,13 +12,13 @@ export class PostgresAdapter extends DbAdapter {
         this.client = new this.lib.Client(url);
     }
 
-    async connect(): Promise<void> {
+    async init(): Promise<void> {
         await new Promise<void>((resolve, reject) => this.client.connect(err => err ? reject(err) : resolve()));
         await this.client.query(`
             CREATE TABLE IF NOT EXISTS "merkel_meta" (
                 "id" SERIAL,
                 "head" TEXT,
-                "migration" TEXT NOT NULL,
+                "name" TEXT NOT NULL,
                 "applied" TIMESTAMP WITH TIME ZONE NOT NULL
             );
         `);
@@ -27,12 +27,12 @@ export class PostgresAdapter extends DbAdapter {
     async getLastMigration(): Promise<MigrationData> {
         // find out the current database state
         const result = await this.client.query(`
-            SELECT "id", "migration" FROM "merkel_meta" ORDER BY "applied" DESC;
+            SELECT "id", "name" FROM "merkel_meta" ORDER BY "id" DESC;
         `);
         return <MigrationData>result.rows[0];
     }
 
-    async logMigration(name: string): Promise<void> {
-        await this.client.query('INSERT INTO merkel_meta (migration, applied) VALUES ($1, $2)', [name, new Date()]);
+    async logMigration(name: string, head: string): Promise<void> {
+        await this.client.query('INSERT INTO merkel_meta (name, applied, head) VALUES ($1, $2, $3)', [name, new Date(), head]);
     }
 }

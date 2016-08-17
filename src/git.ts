@@ -65,6 +65,14 @@ export function parseGitLog(gitLog: string, migrationDir: string): Commit[] {
     return commits;
 }
 
+/**
+ * Gets the SHA1 of the current git HEAD
+ */
+export async function getHead(): Promise<string> {
+    const [stdout] = await exec('git rev-parse HEAD');
+    return stdout.toString().trim();
+}
+
 // /**
 //  * Adds the migration directory back to the index
 //  */
