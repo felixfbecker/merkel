@@ -1,12 +1,17 @@
 {
   "name": "merkel",
   "dependencies": {
+    "chalk": "registry:npm/chalk#1.1.1+20160812215109",
+    "lodash": "registry:npm/lodash#4.0.0+20160723033700",
     "mkdirp": "registry:npm/mkdirp#0.5.0+20160723033700",
-    "pg": "registry:npm/pg#6.0.2+20160802225752"
+    "node-uuid": "registry:npm/node-uuid#1.4.7+20160723033700",
+    "pg": "registry:npm/pg#6.0.2+20160802225752",
+    "yargs": "registry:npm/yargs#5.0.0+20160817153026"
   },
   "globalDependencies": {
-    "commander": "registry:dt/commander#2.3.0+20160317120654",
-    "mz": "registry:dt/mz#0.0.0+20160217153523",
-    "node": "registry:env/node#6.0.0+20160723033700"
+    "mz": "registry:dt/mz#0.0.0+20160811111312"
+  },
+  "globalDevDependencies": {
+    "mocha": "registry:env/mocha#2.2.5+20160723033700"
   }
 }
