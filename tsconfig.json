@@ -3,6 +3,7 @@
     "target": "es6",
     "noImplicitAny": true,
     "module": "commonjs",
+    "rootDir": "src",
     "outDir": "dist",
     "sourceMap": true,
     "declaration": true
