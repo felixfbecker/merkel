@@ -68,19 +68,19 @@ yargs.command('add-git-hook', false, {}, async (argv) => {
 });
 
 interface PrepareCommitMsgArgv extends Argv {
-
+    msgfile: string;
+    source: string;
+    sha1: string;
 }
 
-yargs.command('prepare-commit-msg <msgfile> <source> <sha1>', false, {}, async (argv: ) => {
+yargs.command('prepare-commit-msg <msgfile> <source> <sha1>', false, {}, async (argv: PrepareCommitMsgArgv) => {
     try {
         type CommitSource = 'template' | 'message' | 'commit';
-
-        const [msgFile, source, sha1]: PrepareCommitMsgParams = process.env.GIT_PARAMS;
-        let msg = await fs.readFile(msgFile, 'utf8');
+        let msg = await fs.readFile(argv.msgfile, 'utf8');
         msg = await prepareCommitMessage(msg);
         process.exit(0);
-    } catch (e) {
-        process.stderr.write(e.message);
+    } catch (err) {
+        process.stderr.write(chalk.red(err + ''));
         process.exit(1);
     }
 });
@@ -126,7 +126,7 @@ async function getAndShowStatus(adapter: DbAdapter, head: Commit, migrationDir: 
 yargs.command(
     'status',
     'Shows the last migration task and new migrations tasks to execute',
-    {db: dbOption},
+    { db: dbOption },
     async (argv: StatusArgv) => {
         try {
             const adapter = getAdapterFromUrl(argv.db);
@@ -135,7 +135,7 @@ yargs.command(
             await getAndShowStatus(adapter, head, argv.migrationDir);
             process.exit(0);
         } catch (err) {
-            process.stderr.write(chalk.red(err.stack));
+            process.stderr.write(chalk.red(err + ''));
             process.exit(1);
         }
     }
@@ -143,7 +143,7 @@ yargs.command(
 
 interface MigrateArgv extends Argv {
     db: string;
-    confirm?: boolean;
+    confirm: boolean;
 }
 
 yargs.command(
@@ -185,7 +185,7 @@ yargs.command(
             process.stdout.write(chalk.green('\nAll migrations successful\n'));
             process.exit(0);
         } catch (err) {
-            process.stderr.write('\n' + chalk.red(err.stack));
+            process.stderr.write('\n' + chalk.red(err + ''));
             process.exit(1);
         }
     });
@@ -219,13 +219,9 @@ function migrationCommand(type: MigrationType) {
     };
 }
 
-yargs
-    .command('up <migrations..>', 'Migrates specific migrations up', { db: dbOption }, migrationCommand('up'))
-    .example('up', 'merkel up 07fe5100-ee49-4a7e-a494-1f4b66d5c256');
+yargs.command('up <migrations..>', 'Migrates specific migrations up', { db: dbOption }, migrationCommand('up'));
 
-yargs
-    .command('down <migrations..>', 'Migrates specific migrations down', { db: dbOption }, migrationCommand('down'))
-    .example('down', 'merkel down 07fe5100-ee49-4a7e-a494-1f4b66d5c256');
+yargs.command('down <migrations..>', 'Migrates specific migrations down', { db: dbOption }, migrationCommand('down'));
 
 interface GenerateArgv extends Argv {
     name?: string;
@@ -245,68 +241,73 @@ yargs.command('generate', 'Generates a new migration file', {
         description: 'The path to a custom template file that should be used'
     }
 }, async (argv: GenerateArgv) => {
-    const name = argv.name || uuid.v4();
-    const migrationDir = path.resolve(argv.migrationDir);
-    let template: string;
-    let ext: string = '';
-    if (argv.template) {
-        try {
-            template = await fs.readFile(argv.template, 'utf8');
-        } catch (err) {
-            if (err.code !== 'ENOENT') {
-                throw err;
-            }
-            process.stderr.write(chalk.red('\nCould not find template ' + argv.template + '\n'));
-        }
-    } else {
-        // detect tsconfig.json
-        try {
-            const tsconfig = JSON.parse(await fs.readFile('tsconfig.json', 'utf8'));
-            const targetLessThanEs6 = tsconfig.compilerOptions && /^es[35]$/i.test(tsconfig.compilerOptions.target);
-            ext = '.ts';
-            template = [
-                '',
-                `export ${targetLessThanEs6 ? '' : 'async '}function up(): Promise<void> {`,
-                '',
-                '}',
-                '',
-                `export ${targetLessThanEs6 ? '' : 'async '}function down(): Promise<void> {`,
-                '',
-                '}',
-                ''
-            ].join('\n');
-        } catch (err) {
-            if (err.code !== 'ENOENT') {
-                throw err;
-            }
-            ext = '.js';
-            template = [
-                '',
-                'exports.up = function up() {',
-                '',
-                '};',
-                '',
-                'exports.down = function down() {',
-                '',
-                '};',
-                ''
-            ].join('\n');
-        }
-    }
-    const file = `${migrationDir}/${name}${ext}`;
-    const relativePath = path.relative(process.cwd(), migrationDir);
-    // check if already exists
     try {
-        await fs.access(file);
-        process.stderr.write(chalk.red('\nError: Migration file ' + relativePath + path.sep + chalk.bold(name) + ext + ' already exists\n'));
-        process.exit(1);
+        const name = argv.name || uuid.v4();
+        const migrationDir = path.resolve(argv.migrationDir);
+        let template: string;
+        let ext: string = '';
+        if (argv.template) {
+            try {
+                template = await fs.readFile(argv.template, 'utf8');
+            } catch (err) {
+                if (err.code !== 'ENOENT') {
+                    throw err;
+                }
+                process.stderr.write(chalk.red('\nCould not find template ' + argv.template + '\n'));
+            }
+        } else {
+            // detect tsconfig.json
+            try {
+                const tsconfig = JSON.parse(await fs.readFile('tsconfig.json', 'utf8'));
+                const targetLessThanEs6 = tsconfig.compilerOptions && /^es[35]$/i.test(tsconfig.compilerOptions.target);
+                ext = '.ts';
+                template = [
+                    '',
+                    `export ${targetLessThanEs6 ? '' : 'async '}function up(): Promise<void> {`,
+                    '',
+                    '}',
+                    '',
+                    `export ${targetLessThanEs6 ? '' : 'async '}function down(): Promise<void> {`,
+                    '',
+                    '}',
+                    ''
+                ].join('\n');
+            } catch (err) {
+                if (err.code !== 'ENOENT') {
+                    throw err;
+                }
+                ext = '.js';
+                template = [
+                    '',
+                    'exports.up = function up() {',
+                    '',
+                    '};',
+                    '',
+                    'exports.down = function down() {',
+                    '',
+                    '};',
+                    ''
+                ].join('\n');
+            }
+        }
+        const file = `${migrationDir}/${name}${ext}`;
+        const relativePath = path.relative(process.cwd(), migrationDir);
+        // check if already exists
+        try {
+            await fs.access(file);
+            process.stderr.write(chalk.red('\nError: Migration file ' + relativePath + path.sep + chalk.bold(name) + ext + ' already exists\n'));
+            process.exit(1);
+        } catch (err) {
+            // continue
+        }
+        await new Promise((resolve, reject) => mkdirp(migrationDir, err => err ? reject(err) : resolve()));
+        await fs.writeFile(file, template);
+        process.stdout.write('\nCreated ' + chalk.cyan(relativePath + path.sep + name + ext) + '\n');
+        process.exit(0);
     } catch (err) {
-        // continue
+        process.stderr.write(chalk.red(err + ''));
+        process.exit(1);
     }
-    await new Promise((resolve, reject) => mkdirp(migrationDir, err => err ? reject(err) : resolve()));
-    await fs.writeFile(file, template);
-    process.stdout.write('\nCreated ' + relativePath + path.sep + chalk.bold.cyan(name) + ext + '\n');
-    process.exit(1);
 });
 
 yargs.completion('completion');

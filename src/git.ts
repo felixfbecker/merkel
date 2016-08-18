@@ -1,6 +1,5 @@
 
 import {exec} from 'mz/child_process';
-import {resolve} from 'path';
 import * as chalk from 'chalk';
 import {Migration, MigrationType, Task} from './migration';
 
@@ -36,14 +35,13 @@ export class Commit {
 
 /**
  * Gets all commits in the migration dir since the last migration head
- * @param migrationDir The migration directory
- * @param lastMigrationHead The commit sha1 of the commit when the last migration was Running
+ * @param from The commit sha1 of the commit when the last migration was running
  */
-export async function getNewCommits(migrationDir: string, lastMigrationHead?: Commit): Promise<Commit[]> {
+export async function getNewCommits(from?: Commit): Promise<Commit[]> {
     let command = 'git log --reverse --format=">>>>COMMIT%n%H%n%B"';
     let stdout: Buffer;
     try {
-        [stdout] = await exec(command + (lastMigrationHead ? ` ${lastMigrationHead.sha1}..HEAD` : ''));
+        [stdout] = await exec(command + (from ? ` ${from.sha1}..HEAD` : ''));
     } catch (err) {
         if (err.code !== 128) {
             throw err;
@@ -52,18 +50,16 @@ export async function getNewCommits(migrationDir: string, lastMigrationHead?: Co
         [stdout] = await exec(command);
     }
     const output = stdout.toString().trim();
-    return parseGitLog(output, migrationDir);
+    return parseGitLog(output);
 }
 
 /**
  * Parses the output of `git log --reverse --format=">>>>COMMIT%n%H%n%B" ${lastMigrationHead}`.
- * @private
  */
-export function parseGitLog(gitLog: string, migrationDir: string): Commit[] {
+export function parseGitLog(gitLog: string): Commit[] {
     if (gitLog === '') {
         return [];
     }
-    migrationDir = resolve(migrationDir);
     const commitStrings = gitLog.substr('>>>>COMMIT\n'.length).split('>>>>COMMIT\n');
     const commits = commitStrings.map(s => {
         let [, sha1, message] = s.match(/^(\w+)\n((?:.|\n|\r)*)$/);

@@ -18,7 +18,6 @@ export abstract class DbAdapter {
     public abstract logMigrationTask(task: Task): Promise<void>;
     public abstract checkIfTaskCanExecute(task: Task): Promise<void>;
 
-
     protected rowToTask(row: TableRow): Task {
         return new Task({
             id: row['id'],
