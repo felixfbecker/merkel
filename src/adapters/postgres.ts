@@ -1,7 +1,9 @@
 
 import * as pg from 'pg';
-import {DbAdapter, MigrationData} from '../adapter';
-import {Migration} from '../migration';
+import {SQL} from 'sql-template-strings';
+import {DbAdapter} from '../adapter';
+import {Migration, Task} from '../migration';
+import {Commit} from '../git';
 
 export class PostgresAdapter extends DbAdapter {
 
@@ -16,24 +18,56 @@ export class PostgresAdapter extends DbAdapter {
     async init(): Promise<void> {
         await new Promise<void>((resolve, reject) => this.client.connect(err => err ? reject(err) : resolve()));
         await this.client.query(`
+            CREATE TYPE IF NOT EXISTS "merkel_migration_type" AS ENUM ('up', 'down');
             CREATE TABLE IF NOT EXISTS "merkel_meta" (
                 "id" SERIAL NOT NULL,
-                "commit" TEXT NOT NULL,
                 "name" TEXT NOT NULL,
-                "applied" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+                "type" merkel_migration_type,
+                "commit" TEXT NOT NULL,
+                "head" TEXT NOT NULL,
+                "applied_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
             );
         `);
     }
 
-    async getLastMigration(): Promise<MigrationData> {
+    async getLastMigrationTask(): Promise<Task> {
         // find out the current database state
-        const result = await this.client.query(`
-            SELECT "id", "name", "applied", "head" FROM "merkel_meta" ORDER BY "id" DESC;
+        const {rows} = await this.client.query(`
+            SELECT "id", "name", "applied_at", "type", "commit", "head"
+            FROM "merkel_meta"
+            ORDER BY "id" DESC
+            LIMIT 1
         `);
-        return <MigrationData>result.rows[0];
+        const data = rows[0];
+        if (!data) {
+            return null;
+        }
+        const task = new Task({
+            id: data['id'],
+            type: data['type'],
+            appliedAt: data['applied_at'],
+            commit: new Commit({
+                sha1: data['commit']
+            }),
+            head: new Commit({
+                sha1: data['head']
+            }),
+            migration: new Migration({
+                name: data['name']
+            })
+        });
+        return task;
     }
 
-    async logMigration(migration: Migration, head: string): Promise<void> {
-        await this.client.query('INSERT INTO merkel_meta (name, applied, head) VALUES ($1, $2, $3)', [migration.name, new Date(), head]);
+    async logMigrationTask(task: Task): Promise<void> {
+        await this.client.query(SQL`
+            INSERT INTO merkel_meta
+                        (name, type, commit, head)
+            VALUES      (${task.migration.name}, ${task.type}, ${task.commit}, ${task.head})
+        `);
+    }
+
+    async wasMigrationExecuted(migration: Migration): Promise<boolean> {
+        await this.client.query('SE')
     }
 }

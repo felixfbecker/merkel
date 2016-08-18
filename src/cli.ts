@@ -106,17 +106,18 @@ yargs.command('migrate', [
             const adapter = getAdapterFromUrl(argv.db);
             await adapter.init();
             const head = await getHead();
-            const lastMigration = await adapter.getLastMigration();
+            const lastTask = await adapter.getLastMigrationTask();
             process.stdout.write('\n');
-            if (lastMigration) {
-                process.stdout.write(`Last migration: ${chalk.cyan.bold(lastMigration.name)}\n`);
-                process.stdout.write(`At commit:      ${lastMigration.head}\n`);
-                process.stdout.write(`Applied at:     ${lastMigration.applied}\n`);
+            if (lastTask) {
+                process.stdout.write(`Last migration:      ${lastTask.toString()}\n`);
+                process.stdout.write(`Triggered by commit: ${lastTask.commit.sha1}\n`);
+                process.stdout.write(`Applied at:          ${lastTask.appliedAt}\n`);
+                process.stdout.write(`HEAD at execution:   ${lastTask.head.sha1}\n`);
             } else {
                 process.stdout.write('No migrations run yet\n');
             }
             process.stdout.write(`\nCurrent HEAD is ${head}\n\n`);
-            const commits = await getNewCommits(argv.migrationDir, lastMigration && lastMigration.head);
+            const commits = await getNewCommits(argv.migrationDir, lastTask && lastTask.head);
             const relevantCommits = commits.filter(commit => commit.tasks.length > 0);
             if (relevantCommits.length === 0) {
                 process.stdout.write('No new migrations\n');
@@ -189,8 +190,13 @@ function migrationCommand(type: MigrationType) {
     };
 }
 
-yargs.command('up <migrations..>', 'Migrates specific migrations up', { db: dbOption }, migrationCommand('up'));
-yargs.command('down <migrations..>', 'Migrates specific migrations down', { db: dbOption }, migrationCommand('down'));
+yargs
+    .command('up <migrations..>', 'Migrates specific migrations up', { db: dbOption }, migrationCommand('up'))
+    .example('up', 'merkel up 07fe5100-ee49-4a7e-a494-1f4b66d5c256 d1e9ced2-1485-4a32-95c6-a50785b0ae71');
+
+yargs
+    .command('down <migrations..>', 'Migrates specific migrations down', { db: dbOption }, migrationCommand('down'))
+    .example('down', 'merkel down 07fe5100-ee49-4a7e-a494-1f4b66d5c256 d1e9ced2-1485-4a32-95c6-a50785b0ae71');
 
 interface GenerateArgv extends Argv {
     name?: string;

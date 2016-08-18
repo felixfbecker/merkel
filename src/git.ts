@@ -8,11 +8,25 @@ export class Commit {
     /** The commit SHA1 */
     sha1: string;
 
-    /** The commit message, without commands */
+    /** The commit message, without tasks */
     message: string;
 
     /** Migrations that should be run, in the order they were defined in the commit message */
     tasks: Task[] = [];
+
+    /** The first 6 letters of the SHA1 */
+    get shortSha1(): string {
+        return this.sha1.substring(0, 6);
+    }
+
+    /** The first line of the commit message */
+    get subject(): string {
+        return this.message.split('\n', 1)[0];
+    }
+
+    constructor(options?: { sha1?: string, message?: string, tasks?: Task[] }) {
+        Object.assign(this, options);
+    }
 }
 
 /**
@@ -57,7 +71,7 @@ export function parseGitLog(gitLog: string, migrationDir: string): Commit[] {
         for (const command of commands) {
             const type = <MigrationType>command.shift();
             for (const name of command) {
-                commit.tasks.push(new Task(type, new Migration(name, migrationDir, commit)));
+                commit.tasks.push(new Task({ type, migration: new Migration({ name, migrationDir }), commit }));
             }
         }
         // strip commands from message

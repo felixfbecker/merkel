@@ -25,7 +25,15 @@ export class MigrationError extends Error {
 
 export class Migration {
 
-    constructor(public name: string, public migrationDir: string, public commit?: Commit) { }
+    /** The name of the migration */
+    public name: string;
+
+    /** The migration directory */
+    public migrationDir: string;
+
+    constructor(options?: { name?: string, migrationDir?: string }) {
+        Object.assign(this, options);
+    }
 
     public async execute(type: MigrationType, adapter: DbAdapter, head: string): Promise<void> {
         let migrationExports: any;
@@ -48,13 +56,13 @@ export class Migration {
                     }),
                     Promise.resolve(migrationExports.up())
                 ]);
-            } finally  {
+            } finally {
                 process.removeListener('uncaughtException', exceptionHandler);
             }
         } catch (err) {
             throw new Error('\n' + chalk.red(chalk.bold('Migration error: ') + err.stack || err));
         }
-        await adapter.logMigration(this, head);
+        await adapter.logMigrationTask(this, head);
     }
 
     public async getPath(): Promise<string> {
@@ -68,10 +76,42 @@ export class Migration {
 }
 
 export class Task {
-    constructor(public type: MigrationType, public migration: Migration) {}
+
+    /** The function that was executed */
+    public type: MigrationType;
+
+    /** The migration that was run */
+    public migration: Migration;
+
+    // If the task was already executed:
+
+    /** The sequential id of the task entry in the database */
+    public id: number;
+
+    /** The commit that triggered the task, if triggered by a commit */
+    public commit: Commit;
+
+    /** The git HEAD at the time the task was executed */
+    public head: Commit;
+
+    /** The date when the migration was applied if already executed */
+    public appliedAt: Date;
+
+    constructor(options?: { id?: number, type?: MigrationType, migration?: Migration, commit?: Commit, head?: Commit, appliedAt?: Date }) {
+        Object.assign(this, options);
+    }
+
+    /**
+     * Executes the task
+     */
     public execute(adapter: DbAdapter, head: string): Promise<void> {
         return this.migration.execute(this.type, adapter, head);
     }
+
+    /**
+     * Converts the task to a short string including the type and migration name that can be shown
+     * in the CLI
+     */
     public toString(): string {
         if (this.type === 'up') {
             return chalk.bgGreen('▲ UP   ' + this.migration.name);
