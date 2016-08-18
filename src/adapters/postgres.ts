@@ -2,25 +2,39 @@
 import * as pg from 'pg';
 import {SQL} from 'sql-template-strings';
 import {DbAdapter} from '../adapter';
-import {Migration, Task} from '../migration';
-import {Commit} from '../git';
+import {Task} from '../migration';
 
 export class PostgresAdapter extends DbAdapter {
 
     private client: pg.Client;
+    private lib: typeof pg;
 
-    constructor(url: string, private lib: typeof pg) {
+    /**
+     * @param url The connection url
+     * @param lib The pg library
+     */
+    constructor(url: string, lib: typeof pg) {
         super();
         this.lib = lib;
         this.client = new this.lib.Client(url);
     }
 
+    /**
+     * Connects to the database and sets up the schema if required
+     */
     async init(): Promise<void> {
         await new Promise<void>((resolve, reject) => this.client.connect(err => err ? reject(err) : resolve()));
+        try {
+            await this.client.query(`CREATE TYPE "merkel_migration_type" AS ENUM ('up', 'down')`);
+        } catch (err) {
+            if (~~err.code !== 42710) { // duplicate object
+                throw err;
+            }
+            // else ignore
+        }
         await this.client.query(`
-            CREATE TYPE IF NOT EXISTS "merkel_migration_type" AS ENUM ('up', 'down');
             CREATE TABLE IF NOT EXISTS "merkel_meta" (
-                "id" SERIAL NOT NULL,
+                "id" SERIAL NOT NULL PRIMARY KEY,
                 "name" TEXT NOT NULL,
                 "type" merkel_migration_type,
                 "commit" TEXT,
@@ -30,6 +44,9 @@ export class PostgresAdapter extends DbAdapter {
         `);
     }
 
+    /**
+     * Gets the last migration task that was executed
+     */
     async getLastMigrationTask(): Promise<Task> {
         // find out the current database state
         const {rows} = await this.client.query(`
@@ -38,36 +55,49 @@ export class PostgresAdapter extends DbAdapter {
             ORDER BY "id" DESC
             LIMIT 1
         `);
-        const data = rows[0];
-        if (!data) {
-            return null;
-        }
-        const task = new Task({
-            id: data['id'],
-            type: data['type'],
-            appliedAt: data['applied_at'],
-            commit: new Commit({
-                sha1: data['commit']
-            }),
-            head: new Commit({
-                sha1: data['head']
-            }),
-            migration: new Migration({
-                name: data['name']
-            })
-        });
-        return task;
+        return rows.length === 0 ? null : this.rowToTask(<any>rows[0]);
     }
 
+    /**
+     * Logs an executed task to the database. Sets the task ID
+     */
     async logMigrationTask(task: Task): Promise<void> {
-        await this.client.query(SQL`
-            INSERT INTO merkel_meta
-                        ("name", "type", "commit", "head", "applied_at")
-            VALUES      (${task.migration.name}, ${task.type}, ${task.commit ? task.commit.sha1 : null}, ${task.head}, ${task.appliedAt})
+        const {rows} = await this.client.query(SQL`
+            INSERT INTO merkel_meta ("name", "type", "commit", "head", "applied_at")
+            VALUES (
+                ${task.migration.name},
+                ${task.type},
+                ${task.commit ? task.commit.sha1 : null},
+                ${task.head.sha1},
+                ${task.appliedAt}
+            )
+            RETURNING id
         `);
+        task.id = rows[0]['id'];
     }
 
-    async wasMigrationExecuted(migration: Migration): Promise<boolean> {
-        await this.client.query('SE')
+    /**
+     * Checks that the same task cannot be executed two times in a row and the first task cannot be
+     * a down task
+     */
+    public async checkIfTaskCanExecute(task: Task): Promise<void> {
+        const {rows} = await this.client.query(SQL`
+            SELECT "type"
+            FROM "merkel_meta"
+            WHERE "name" = ${task.migration.name}
+            ORDER BY "id" DESC
+            LIMIT 1
+        `);
+        if (task.type === 'up') {
+            if (rows.length > 0 && rows[0]['type'] === 'up') {
+                throw new Error('Tried to run the same migration up twice');
+            }
+        } else if (task.type === 'down') {
+            if (rows.length === 0) {
+                throw new Error('The first migration cannot be a down migration');
+            } else if (rows[0]['type'] === 'down') {
+                throw new Error('Tried to run the same migration down twice');
+            }
+        }
     }
 }

@@ -12,7 +12,7 @@
   "bin": "./bin/merkel",
   "main": "./dist/index.ts",
   "scripts": {
-    "postinstall": "merkel add-git-hook",
+    "postinstall": "merkel init",
     "build": "tsc -p .",
     "watch": "tsc -w -p .",
     "clean": "rimraf dist"

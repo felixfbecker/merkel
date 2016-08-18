@@ -12,10 +12,11 @@ import * as tty from 'tty';
 import * as inquirer from 'inquirer';
 import {parse} from 'url';
 import {PostgresAdapter} from './adapters/postgres';
+import {DbAdapter} from './adapter';
 const pkg = require('../package.json');
 require('update-notifier')({ pkg }).notify();
 
-export function getAdapterFromUrl(url: string) {
+export function getAdapterFromUrl(url: string): DbAdapter {
     const dialect = parse(url).protocol;
     switch (dialect) {
         case 'postgres:': return new PostgresAdapter(url, require(process.cwd() + '/node_modules/pg'));
@@ -38,6 +39,7 @@ yargs
     .env('MERKEL')
     .demand(1)
     .usage('\nUsage: merkel [options] <command>')
+    .wrap(90)
     .option('migration-dir', {
         description: 'The directory for migration files',
         nargs: 1,
@@ -50,27 +52,29 @@ yargs
     .alias('version', 'v')
     .help('help')
     .alias('help', 'h')
-    .epilogue('All options can also be passed through env vars, like MERKEL_DB for --db')
-    .completion('completion');
+    .epilogue('All options can also be passed through env vars, like MERKEL_DB for --db');
 
 yargs.command('add-git-hook', false, {}, async (argv) => {
-    const hookPath = process.cwd() + '/.git/hooks/prepare-commit-message';
+    const hookPath = path.normalize('.git/hooks/prepare-commit-message');
     const hook = '\n\nmerkel prepare-commit-message $1 $2 $3\n';
     try {
         await fs.access(hookPath);
         await fs.appendFile(hookPath, hook);
+        process.stdout.write('\nAppended to ' + chalk.cyan(hookPath));
     } catch (err) {
         await fs.writeFile(hookPath, '#!/usr/bin/env node\n' + hook);
+        process.stdout.write('\nCreated ' + chalk.cyan(hookPath));
     }
 });
 
-yargs.command('prepare-commit-msg <msgfile> <source> <sha1>', false, {}, async (argv) => {
+interface PrepareCommitMsgArgv extends Argv {
+
+}
+
+yargs.command('prepare-commit-msg <msgfile> <source> <sha1>', false, {}, async (argv: ) => {
     try {
         type CommitSource = 'template' | 'message' | 'commit';
-        type PrepareCommitMsgParams = [string, CommitSource, string | void];
-        if (!process.env.GIT_PARAMS) {
-            throw new Error('Environment variable GIT_PARAMS was not set');
-        }
+
         const [msgFile, source, sha1]: PrepareCommitMsgParams = process.env.GIT_PARAMS;
         let msg = await fs.readFile(msgFile, 'utf8');
         msg = await prepareCommitMessage(msg);
@@ -81,18 +85,71 @@ yargs.command('prepare-commit-msg <msgfile> <source> <sha1>', false, {}, async (
     }
 });
 
+interface StatusArgv extends Argv {
+    db: string;
+}
+
+async function getAndShowStatus(adapter: DbAdapter, head: Commit, migrationDir: string): Promise<Commit[]> {
+    const lastTask = await adapter.getLastMigrationTask();
+    process.stdout.write('\n');
+    if (lastTask) {
+        process.stdout.write(`Last migration:      ${lastTask.toString()}\n`);
+        process.stdout.write(`Applied at:          ${lastTask.appliedAt}\n`);
+        process.stdout.write(`Triggered by commit: ${chalk.yellow(lastTask.commit.sha1)}\n`);
+        process.stdout.write(`HEAD at execution:   ${chalk.yellow(lastTask.head.sha1)}\n`);
+    } else {
+        process.stdout.write('No migration run yet\n');
+    }
+    process.stdout.write(`\nCurrent HEAD is ${chalk.yellow(head.sha1)}\n\n`);
+    const commits = await getNewCommits(migrationDir, lastTask && lastTask.head);
+    const relevantCommits = commits.filter(commit => commit.tasks.length > 0);
+    if (relevantCommits.length === 0) {
+        process.stdout.write('No pending migrations\n');
+        process.exit(0);
+    }
+    const migrationCount = relevantCommits.reduce((prev: number, curr: Commit) => prev + curr.tasks.length, 0);
+    process.stdout.write(chalk.underline(`${migrationCount} pending migration${migrationCount > 1 ? 's' : ''}:\n\n`));
+    for (const commit of relevantCommits) {
+        process.stdout.write(commit.toString() + '\n');
+        for (const task of commit.tasks) {
+            if (task.type === 'up') {
+                process.stdout.write(task.toString() + '\n');
+            } else if (task.type === 'down') {
+                process.stdout.write(task.toString() + '\n');
+            }
+        }
+        process.stdout.write(`\n`);
+    }
+    return relevantCommits;
+}
+
+yargs.command(
+    'status',
+    'Shows the last migration task and new migrations tasks to execute',
+    {db: dbOption},
+    async (argv: StatusArgv) => {
+        try {
+            const adapter = getAdapterFromUrl(argv.db);
+            await adapter.init();
+            const head = await getHead();
+            await getAndShowStatus(adapter, head, argv.migrationDir);
+            process.exit(0);
+        } catch (err) {
+            process.stderr.write(chalk.red(err.stack));
+            process.exit(1);
+        }
+    }
+);
+
 interface MigrateArgv extends Argv {
     db: string;
     confirm?: boolean;
 }
 
-yargs.command('migrate', [
-    'Runs all migration files that have been added since the last migration, in the order they were added to the ',
-    'repository. It will query the database to get the last-run migration. Then it will ask git which migration ',
-    'files were added since the last migration, and in what order. For every commit, it also gets the commit ',
-    'message. By default, it will run all added up migrations. If the commit message contains merkel commands in ',
-    'angled brackets, it will parse and execute those instead.'
-].join(''), {
+yargs.command(
+    'migrate',
+    'Runs all migration tasks that were embedded in commit messages since the commit of the last migration',
+    {
         confirm: {
             type: 'boolean',
             description: 'Ask for confirmation before beginning the actual migration',
@@ -100,43 +157,13 @@ yargs.command('migrate', [
             defaultDescription: 'true if run in TTY context'
         },
         db: dbOption
-    }, async (argv: MigrateArgv) => {
+    },
+    async (argv: MigrateArgv) => {
         try {
             const adapter = getAdapterFromUrl(argv.db);
             await adapter.init();
             const head = await getHead();
-            const lastTask = await adapter.getLastMigrationTask();
-            process.stdout.write('\n');
-            if (lastTask) {
-                process.stdout.write(`Last migration:      ${lastTask.toString()}\n`);
-                process.stdout.write(`Triggered by commit: ${lastTask.commit.sha1}\n`);
-                process.stdout.write(`Applied at:          ${lastTask.appliedAt}\n`);
-                process.stdout.write(`HEAD at execution:   ${lastTask.head.sha1}\n`);
-            } else {
-                process.stdout.write('No migrations run yet\n');
-            }
-            process.stdout.write(`\nCurrent HEAD is ${head}\n\n`);
-            const commits = await getNewCommits(argv.migrationDir, lastTask && lastTask.head);
-            const relevantCommits = commits.filter(commit => commit.tasks.length > 0);
-            if (relevantCommits.length === 0) {
-                process.stdout.write('No new migrations\n');
-                process.exit(0);
-            }
-            const migrationCount = relevantCommits.reduce((prev: number, curr: Commit) => {
-                return prev + curr.tasks.length;
-            }, relevantCommits[0].tasks.length);
-            process.stdout.write(chalk.white.bold.underline(`${migrationCount} new migrations:\n\n`));
-            for (const {shortSha1, subject, tasks} of relevantCommits) {
-                process.stdout.write(`${chalk.yellow(shortSha1)} ${subject}\n`);
-                for (const task of tasks) {
-                    if (task.type === 'up') {
-                        process.stdout.write(`${task.toString()}\n`);
-                    } else if (task.type === 'down') {
-                        process.stdout.write(`${task.toString()}\n`);
-                    }
-                }
-                process.stdout.write(`\n`);
-            }
+            const relevantCommits = await getAndShowStatus(adapter, head, argv.migrationDir);
             if (argv.confirm) {
                 const answer = await inquirer.prompt({ type: 'confirm', name: 'continue', message: 'Continue?' });
                 if (!answer['continue']) {
@@ -145,12 +172,12 @@ yargs.command('migrate', [
                 process.stdout.write('\n');
             }
             process.stdout.write('Starting migration\n\n');
-            for (const {tasks, shortSha1, subject} of relevantCommits) {
-                process.stdout.write(`${chalk.yellow(shortSha1)} ${subject}\n`);
-                for (const task of tasks) {
+            for (const commit of relevantCommits) {
+                process.stdout.write(`${chalk.yellow(commit.shortSha1)} ${commit.subject}\n`);
+                for (const task of commit.tasks) {
                     process.stdout.write(task.toString() + '...');
                     const interval = setInterval(() => process.stdout.write('.'), 100);
-                    await task.execute(argv.migrationDir, adapter, head);
+                    await task.execute(argv.migrationDir, adapter, head, commit);
                     clearInterval(interval);
                     process.stdout.write(' Success\n');
                 }
@@ -194,11 +221,11 @@ function migrationCommand(type: MigrationType) {
 
 yargs
     .command('up <migrations..>', 'Migrates specific migrations up', { db: dbOption }, migrationCommand('up'))
-    .example('up', 'merkel up 07fe5100-ee49-4a7e-a494-1f4b66d5c256 d1e9ced2-1485-4a32-95c6-a50785b0ae71');
+    .example('up', 'merkel up 07fe5100-ee49-4a7e-a494-1f4b66d5c256');
 
 yargs
     .command('down <migrations..>', 'Migrates specific migrations down', { db: dbOption }, migrationCommand('down'))
-    .example('down', 'merkel down 07fe5100-ee49-4a7e-a494-1f4b66d5c256 d1e9ced2-1485-4a32-95c6-a50785b0ae71');
+    .example('down', 'merkel down 07fe5100-ee49-4a7e-a494-1f4b66d5c256');
 
 interface GenerateArgv extends Argv {
     name?: string;
@@ -209,7 +236,8 @@ yargs.command('generate', 'Generates a new migration file', {
     name: {
         alias: 'n',
         nargs: 1,
-        description: 'The name of the migration file'
+        description: 'The name of the migration file',
+        defaultDescription: 'UUID'
     },
     template: {
         alias: 't',
@@ -280,5 +308,7 @@ yargs.command('generate', 'Generates a new migration file', {
     process.stdout.write('\nCreated ' + relativePath + path.sep + chalk.bold.cyan(name) + ext + '\n');
     process.exit(1);
 });
+
+yargs.completion('completion');
 
 export default yargs;

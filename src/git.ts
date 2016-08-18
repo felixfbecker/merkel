@@ -1,6 +1,7 @@
 
 import {exec} from 'mz/child_process';
 import {resolve} from 'path';
+import * as chalk from 'chalk';
 import {Migration, MigrationType, Task} from './migration';
 
 export class Commit {
@@ -26,6 +27,10 @@ export class Commit {
 
     constructor(options?: { sha1?: string, message?: string, tasks?: Task[] }) {
         Object.assign(this, options);
+    }
+
+    public toString(): string {
+        return chalk.yellow(this.shortSha1) + ' ' + this.subject;
     }
 }
 
@@ -62,8 +67,7 @@ export function parseGitLog(gitLog: string, migrationDir: string): Commit[] {
     const commitStrings = gitLog.substr('>>>>COMMIT\n'.length).split('>>>>COMMIT\n');
     const commits = commitStrings.map(s => {
         let [, sha1, message] = s.match(/^(\w+)\n((?:.|\n|\r)*)$/);
-        const commit = new Commit();
-        commit.sha1 = sha1;
+        const commit = new Commit({ sha1 });
         // get commands from message
         const regExp = /\[\s*merkel[^\]]*\s*\]/g;
         const match = message.match(regExp);

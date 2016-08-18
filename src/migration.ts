@@ -37,7 +37,7 @@ export class Migration {
      */
     public async getPath(migrationDir: string): Promise<string> {
         const basePath = resolve(migrationDir, this.name);
-        const files = await glob(basePath + '.*');
+        const files = await glob(basePath + '*.*');
         if (files.length === 0) {
             throw new MigrationNotFoundError(this, migrationDir);
         }
@@ -75,6 +75,7 @@ export class Task {
      * Executes the task
      */
     public async execute(migrationDir: string, adapter: DbAdapter, head: Commit, commit?: Commit): Promise<void> {
+        await adapter.checkIfTaskCanExecute(this);
         let migrationExports: any;
         try {
             const path = await this.migration.getPath(migrationDir);
@@ -85,8 +86,8 @@ export class Task {
         if (typeof migrationExports.up !== 'function') {
             throw new MigrationTypeNotFoundError(this.migration, this.type, migrationDir);
         }
-        let exceptionHandler: Function;
         try {
+            let exceptionHandler: Function;
             try {
                 await Promise.race([
                     new Promise((resolve, reject) => {
@@ -101,6 +102,8 @@ export class Task {
         } catch (err) {
             throw new MigrationExecutionError(err);
         }
+        this.head = head;
+        this.commit = commit;
         this.appliedAt = new Date();
         await adapter.logMigrationTask(this);
     }
@@ -113,7 +116,7 @@ export class Task {
         if (this.type === 'up') {
             return chalk.bgGreen('▲ UP   ' + this.migration.name);
         } else if (this.type === 'down') {
-            return chalk.bgGreen('▼ DOWN ' + this.migration.name);
+            return chalk.bgRed('▼ DOWN ' + this.migration.name);
         } else {
             throw new Error('Unknown migration type ' + this.type);
         }
