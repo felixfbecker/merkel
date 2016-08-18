@@ -16,7 +16,7 @@ export class Commit {
 
     /** The first 6 letters of the SHA1 */
     get shortSha1(): string {
-        return this.sha1.substring(0, 6);
+        return this.sha1.substring(0, 7);
     }
 
     /** The first line of the commit message */
@@ -26,6 +26,16 @@ export class Commit {
 
     constructor(options?: { sha1?: string, message?: string, tasks?: Task[] }) {
         Object.assign(this, options);
+    }
+
+    /**
+     * Loads more info by using `git show <sha1>`
+     */
+    public async loadSubject(): Promise<void> {
+        if (this.message === undefined) {
+            const [stdout] = await exec(`git log --format=%B ${this.sha1}`);
+            this.message = stdout.toString();
+        }
     }
 
     public toString(): string {

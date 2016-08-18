@@ -19,7 +19,7 @@ export abstract class DbAdapter {
     public abstract checkIfTaskCanExecute(task: Task): Promise<void>;
 
     protected rowToTask(row: TableRow): Task {
-        return new Task({
+        const task = new Task({
             id: row['id'],
             type: row['type'],
             appliedAt: row['applied_at'],
@@ -33,5 +33,6 @@ export abstract class DbAdapter {
                 name: row['name']
             })
         });
+        return task;
     }
 }

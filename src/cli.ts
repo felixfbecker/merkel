@@ -13,6 +13,7 @@ import * as inquirer from 'inquirer';
 import {parse} from 'url';
 import {PostgresAdapter} from './adapters/postgres';
 import {DbAdapter} from './adapter';
+import {inflect} from 'inflection';
 const pkg = require('../package.json');
 require('update-notifier')({ pkg }).notify();
 
@@ -91,24 +92,30 @@ interface StatusArgv extends Argv {
 
 async function getAndShowStatus(adapter: DbAdapter, head: Commit, migrationDir: string): Promise<Commit[]> {
     const lastTask = await adapter.getLastMigrationTask();
+    const commits = await getNewCommits(lastTask.head);
     process.stdout.write('\n');
+    await Promise.all([
+        lastTask.commit.loadSubject(),
+        lastTask.head.loadSubject(),
+        head.loadSubject()
+    ]);
     if (lastTask) {
         process.stdout.write(`Last migration:      ${lastTask.toString()}\n`);
         process.stdout.write(`Applied at:          ${lastTask.appliedAt}\n`);
-        process.stdout.write(`Triggered by commit: ${chalk.yellow(lastTask.commit.sha1)}\n`);
-        process.stdout.write(`HEAD at execution:   ${chalk.yellow(lastTask.head.sha1)}\n`);
+        process.stdout.write(`Triggered by commit: ${lastTask.commit.toString()}\n`);
+        process.stdout.write(`HEAD at execution:   ${lastTask.commit.toString()}\n`);
+        process.stdout.write(chalk.grey(`                        ${commits.length === 0 ? '‖' : `↕ ${commits.length} ${inflect('Commit', commits.length)}\n`}`));
+        process.stdout.write(`Current HEAD:        ${head.toString()}\n\n`);
     } else {
         process.stdout.write('No migration run yet\n');
     }
-    process.stdout.write(`\nCurrent HEAD is ${chalk.yellow(head.sha1)}\n\n`);
-    const commits = await getNewCommits(migrationDir, lastTask && lastTask.head);
     const relevantCommits = commits.filter(commit => commit.tasks.length > 0);
     if (relevantCommits.length === 0) {
         process.stdout.write('No pending migrations\n');
         process.exit(0);
     }
     const migrationCount = relevantCommits.reduce((prev: number, curr: Commit) => prev + curr.tasks.length, 0);
-    process.stdout.write(chalk.underline(`${migrationCount} pending migration${migrationCount > 1 ? 's' : ''}:\n\n`));
+    process.stdout.write(chalk.underline(`${migrationCount} pending ${inflect('migration', migrationCount)}:\n\n`));
     for (const commit of relevantCommits) {
         process.stdout.write(commit.toString() + '\n');
         for (const task of commit.tasks) {
@@ -135,7 +142,7 @@ yargs.command(
             await getAndShowStatus(adapter, head, argv.migrationDir);
             process.exit(0);
         } catch (err) {
-            process.stderr.write(chalk.red(err + ''));
+            process.stderr.write(chalk.red(err.stack));
             process.exit(1);
         }
     }
