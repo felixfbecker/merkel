@@ -1,4 +1,4 @@
->>>>START
+>>>>COMMIT
 c3555604ddfc24022508c5e1f9398c81f3b9b6fa
 Revert changes to user model
 
@@ -7,24 +7,13 @@ and 900931208ae7dabfd9ede49a78d4a961aa8043ba.
 
 [merkel down d9271b98-1a2e-445f-8363-783b2bee0ef0]
 [merkel down 694b8b6c-3aaa-4e4d-8d54-76515ba90617]
->>>>END
-
-M	models/User.ts
->>>>START
+>>>>COMMIT
 b9fb8f15176d958d42dba4f14e35f1bf71ec0be9
 Change the User model
 
 Add column username to User model
->>>>END
-
-A	migrations/d9271b98-1a2e-445f-8363-783b2bee0ef0.ts
-M	models/User.ts
->>>>START
+>>>>COMMIT
 900931208ae7dabfd9ede49a78d4a961aa8043ba
 Change the User model
 
 Add email column to User model
->>>>END
-
-A	migrations/694b8b6c-3aaa-4e4d-8d54-76515ba90617.ts
-M	models/User.ts

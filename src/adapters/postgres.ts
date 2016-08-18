@@ -1,6 +1,7 @@
 
 import * as pg from 'pg';
-import {DbAdapter, MigrationData} from './abstract';
+import {DbAdapter, MigrationData} from '../adapter';
+import {Migration} from '../migration';
 
 export class PostgresAdapter extends DbAdapter {
 
@@ -16,10 +17,10 @@ export class PostgresAdapter extends DbAdapter {
         await new Promise<void>((resolve, reject) => this.client.connect(err => err ? reject(err) : resolve()));
         await this.client.query(`
             CREATE TABLE IF NOT EXISTS "merkel_meta" (
-                "id" SERIAL,
-                "head" TEXT,
+                "id" SERIAL NOT NULL,
+                "commit" TEXT NOT NULL,
                 "name" TEXT NOT NULL,
-                "applied" TIMESTAMP WITH TIME ZONE NOT NULL
+                "applied" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
             );
         `);
     }
@@ -27,12 +28,12 @@ export class PostgresAdapter extends DbAdapter {
     async getLastMigration(): Promise<MigrationData> {
         // find out the current database state
         const result = await this.client.query(`
-            SELECT "id", "name" FROM "merkel_meta" ORDER BY "id" DESC;
+            SELECT "id", "name", "applied", "head" FROM "merkel_meta" ORDER BY "id" DESC;
         `);
         return <MigrationData>result.rows[0];
     }
 
-    async logMigration(name: string, head: string): Promise<void> {
-        await this.client.query('INSERT INTO merkel_meta (name, applied, head) VALUES ($1, $2, $3)', [name, new Date(), head]);
+    async logMigration(migration: Migration, head: string): Promise<void> {
+        await this.client.query('INSERT INTO merkel_meta (name, applied, head) VALUES ($1, $2, $3)', [migration.name, new Date(), head]);
     }
 }

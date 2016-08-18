@@ -1,21 +1,18 @@
 
 import {exec} from 'mz/child_process';
-import {resolve, basename} from 'path';
+import {resolve} from 'path';
+import {Migration, MigrationType, Task} from './migration';
 
-export type MigrationType = 'up' | 'down';
+export class Commit {
 
-export interface Migration {
-    type: 'up' | 'down';
-    name: string;
-}
-
-export interface Commit {
     /** The commit SHA1 */
     sha1: string;
+
     /** The commit message, without commands */
     message: string;
-    /** Migrations that should be run */
-    migrations: Migration[];
+
+    /** Migrations that should be run, in the order they were defined in the commit message */
+    tasks: Task[] = [];
 }
 
 /**
@@ -23,44 +20,49 @@ export interface Commit {
  * @param migrationDir The migration directory
  * @param lastMigrationHead The commit sha1 of the commit when the last migration was Running
  */
-export async function getNewCommits(migrationDir: string, lastMigrationHead: string): Promise<Commit[]> {
-    const [stdout] = await exec(`git log --reverse --format=">>>>START%n%H%n%B>>>>END" --name-status ${lastMigrationHead}`);
+export async function getNewCommits(migrationDir: string, lastMigrationHead?: string): Promise<Commit[]> {
+    let command = 'git log --reverse --format=">>>>COMMIT%n%H%n%B"';
+    let stdout: Buffer;
+    try {
+        [stdout] = await exec(command + (lastMigrationHead ? ` ${lastMigrationHead}..HEAD` : ''));
+    } catch (err) {
+        if (err.code !== 128) {
+            throw err;
+        }
+        // the last migration head does not exist in this repository
+        [stdout] = await exec(command);
+    }
     const output = stdout.toString().trim();
     return parseGitLog(output, migrationDir);
 }
 
 /**
- * Parses the output of `git log --reverse --format=">>>>START%n%H%n%B>>>>END" --name-status ${lastMigrationHead}`.
+ * Parses the output of `git log --reverse --format=">>>>COMMIT%n%H%n%B" ${lastMigrationHead}`.
  * @private
  */
 export function parseGitLog(gitLog: string, migrationDir: string): Commit[] {
+    if (gitLog === '') {
+        return [];
+    }
     migrationDir = resolve(migrationDir);
-    const commitStrings = gitLog.substr('>>>>START\n'.length).split('>>>>START\n');
+    const commitStrings = gitLog.substr('>>>>COMMIT\n'.length).split('>>>>COMMIT\n');
     const commits = commitStrings.map(s => {
-        let [, sha1, message, changesString] = s.match(/^(\w+)\n((?:.|\n|\r)*)>>>>END\n\n((?:.|\n)*)$/);
+        let [, sha1, message] = s.match(/^(\w+)\n((?:.|\n|\r)*)$/);
+        const commit = new Commit();
+        commit.sha1 = sha1;
         // get commands from message
         const regExp = /\[\s*merkel[^\]]*\s*\]/g;
         const match = message.match(regExp);
         const commands: string[][] = match ? match.map(command => command.replace(/^\s*\[\s*/, '').replace(/\s*\]\s*$/, '').split(/\s+/g).slice(1)) : [];
-        const migrations: Migration[] = [];
         for (const command of commands) {
             const type = <MigrationType>command.shift();
-            for (const name of command.slice(1)) {
-                migrations.push({ type, name });
+            for (const name of command) {
+                commit.tasks.push(new Task(type, new Migration(name, migrationDir, commit)));
             }
         }
-        // look for added migration file
-        const changes = changesString.replace(/\n$/, '').split('\n');
-        for (const change of changes) {
-            const status = change.charAt(0);
-            const file = resolve(change.substr(1).trim());
-            if (status === 'A' && file.startsWith(migrationDir)) {
-                migrations.push({ type: 'up', name: basename(file).replace(/(?:\.\w +)* $ /, '') });
-                break;
-            }
-        }
-        message = message.replace(regExp, '');
-        return { sha1, message, migrations };
+        // strip commands from message
+        commit.message = message.replace(regExp, '');
+        return commit;
     });
     return commits;
 }

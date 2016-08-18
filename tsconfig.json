@@ -7,5 +7,10 @@
     "outDir": "dist",
     "sourceMap": true,
     "declaration": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "migrations"
+  ]
 }
