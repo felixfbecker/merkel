@@ -8,16 +8,16 @@ import glob = require('globby');
 export type MigrationType = 'up' | 'down';
 
 export class MigrationNotFoundError extends Error {
-    constructor(public migration: string, public migrationDir: string) {
-        super('Error: Migration file ' + migrationDir + sep + chalk.bold(migration) + '.js does not exist');
+    constructor(public migration: Migration, public migrationDir: string) {
+        super('Error: Migration file ' + migrationDir + sep + chalk.bold(migration.name) + '.js does not exist');
     }
 }
 export class MigrationTypeNotFoundError extends Error {
-    constructor(public migration: string, public migrationType: MigrationType, public migrationDir: string) {
-        super('Error: Migration file ' + migrationDir + sep + chalk.bold(migration) + '.js does not export an up function');
+    constructor(public migration: Migration, public migrationType: MigrationType, public migrationDir: string) {
+        super('Error: Migration file ' + migrationDir + sep + chalk.bold(migration.name) + '.js does not export an up function');
     }
 }
-export class MigrationError extends Error {
+export class MigrationExecutionError extends Error {
     constructor(public original: any) {
         super(chalk.red(chalk.bold('Migration error: ') + original.stack || original));
     }
@@ -28,48 +28,18 @@ export class Migration {
     /** The name of the migration */
     public name: string;
 
-    /** The migration directory */
-    public migrationDir: string;
-
-    constructor(options?: { name?: string, migrationDir?: string }) {
+    constructor(options?: { name?: string }) {
         Object.assign(this, options);
     }
 
-    public async execute(type: MigrationType, adapter: DbAdapter, head: string): Promise<void> {
-        let migrationExports: any;
-        try {
-            const path = await this.getPath();
-            migrationExports = require(path);
-        } catch (err) {
-            throw new MigrationNotFoundError(this.name, this.migrationDir);
-        }
-        if (typeof migrationExports.up !== 'function') {
-            throw new MigrationTypeNotFoundError(this.name, type, this.migrationDir);
-        }
-        let exceptionHandler: Function;
-        try {
-            try {
-                await Promise.race([
-                    new Promise((resolve, reject) => {
-                        exceptionHandler = reject;
-                        process.on('uncaughtException', reject);
-                    }),
-                    Promise.resolve(migrationExports.up())
-                ]);
-            } finally {
-                process.removeListener('uncaughtException', exceptionHandler);
-            }
-        } catch (err) {
-            throw new Error('\n' + chalk.red(chalk.bold('Migration error: ') + err.stack || err));
-        }
-        await adapter.logMigrationTask(this, head);
-    }
-
-    public async getPath(): Promise<string> {
-        const basePath = resolve(this.migrationDir, this.name);
+    /**
+     * @param migrationDir The migration directory
+     */
+    public async getPath(migrationDir: string): Promise<string> {
+        const basePath = resolve(migrationDir, this.name);
         const files = await glob(basePath + '.*');
         if (files.length === 0) {
-            throw new MigrationNotFoundError(this.name, this.migrationDir);
+            throw new MigrationNotFoundError(this, migrationDir);
         }
         return files[0];
     }
@@ -104,8 +74,35 @@ export class Task {
     /**
      * Executes the task
      */
-    public execute(adapter: DbAdapter, head: string): Promise<void> {
-        return this.migration.execute(this.type, adapter, head);
+    public async execute(migrationDir: string, adapter: DbAdapter, head: Commit, commit?: Commit): Promise<void> {
+        let migrationExports: any;
+        try {
+            const path = await this.migration.getPath(migrationDir);
+            migrationExports = require(path);
+        } catch (err) {
+            throw new MigrationNotFoundError(this.migration, migrationDir);
+        }
+        if (typeof migrationExports.up !== 'function') {
+            throw new MigrationTypeNotFoundError(this.migration, this.type, migrationDir);
+        }
+        let exceptionHandler: Function;
+        try {
+            try {
+                await Promise.race([
+                    new Promise((resolve, reject) => {
+                        exceptionHandler = reject;
+                        process.on('uncaughtException', reject);
+                    }),
+                    Promise.resolve(migrationExports.up())
+                ]);
+            } finally {
+                process.removeListener('uncaughtException', exceptionHandler);
+            }
+        } catch (err) {
+            throw new MigrationExecutionError(err);
+        }
+        this.appliedAt = new Date();
+        await adapter.logMigrationTask(this);
     }
 
     /**

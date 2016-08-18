@@ -15,7 +15,6 @@ import {PostgresAdapter} from './adapters/postgres';
 const pkg = require('../package.json');
 require('update-notifier')({ pkg }).notify();
 
-
 export function getAdapterFromUrl(url: string) {
     const dialect = parse(url).protocol;
     switch (dialect) {
@@ -127,8 +126,8 @@ yargs.command('migrate', [
                 return prev + curr.tasks.length;
             }, relevantCommits[0].tasks.length);
             process.stdout.write(chalk.white.bold.underline(`${migrationCount} new migrations:\n\n`));
-            for (const {sha1, message, tasks} of relevantCommits) {
-                process.stdout.write(`${chalk.yellow(sha1.substring(0, 6))} ${message.split('\n', 1)[0]}\n`);
+            for (const {shortSha1, subject, tasks} of relevantCommits) {
+                process.stdout.write(`${chalk.yellow(shortSha1)} ${subject}\n`);
                 for (const task of tasks) {
                     if (task.type === 'up') {
                         process.stdout.write(`${task.toString()}\n`);
@@ -146,12 +145,12 @@ yargs.command('migrate', [
                 process.stdout.write('\n');
             }
             process.stdout.write('Starting migration\n\n');
-            for (const {tasks, sha1, message} of relevantCommits) {
-                process.stdout.write(`${chalk.yellow(sha1.substring(0, 6))} ${message.split('\n', 1)[0]}\n`);
+            for (const {tasks, shortSha1, subject} of relevantCommits) {
+                process.stdout.write(`${chalk.yellow(shortSha1)} ${subject}\n`);
                 for (const task of tasks) {
                     process.stdout.write(task.toString() + '...');
                     const interval = setInterval(() => process.stdout.write('.'), 100);
-                    await task.execute(adapter, head);
+                    await task.execute(argv.migrationDir, adapter, head);
                     clearInterval(interval);
                     process.stdout.write(' Success\n');
                 }
@@ -175,10 +174,13 @@ function migrationCommand(type: MigrationType) {
         const adapter = getAdapterFromUrl(argv.db);
         await adapter.init();
         for (const name of argv.migrations) {
-            const task = new Task('up', new Migration(name, argv.migrationDir));
+            const task = new Task({
+                type: 'up',
+                migration: new Migration({ name })
+            });
             process.stdout.write('Executing' + task.toString() + '...');
             try {
-                await task.execute(adapter, head);
+                await task.execute(argv.migrationDir, adapter, head);
                 process.stdout.write(' Success\n');
             } catch (err) {
                 process.stderr.write(chalk.red('\nError: ' + err.stack));

@@ -23,9 +23,9 @@ export class PostgresAdapter extends DbAdapter {
                 "id" SERIAL NOT NULL,
                 "name" TEXT NOT NULL,
                 "type" merkel_migration_type,
-                "commit" TEXT NOT NULL,
+                "commit" TEXT,
                 "head" TEXT NOT NULL,
-                "applied_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+                "applied_at" TIMESTAMP WITH TIME ZONE NOT NULL
             );
         `);
     }
@@ -62,8 +62,8 @@ export class PostgresAdapter extends DbAdapter {
     async logMigrationTask(task: Task): Promise<void> {
         await this.client.query(SQL`
             INSERT INTO merkel_meta
-                        (name, type, commit, head)
-            VALUES      (${task.migration.name}, ${task.type}, ${task.commit}, ${task.head})
+                        ("name", "type", "commit", "head", "applied_at")
+            VALUES      (${task.migration.name}, ${task.type}, ${task.commit ? task.commit.sha1 : null}, ${task.head}, ${task.appliedAt})
         `);
     }
 

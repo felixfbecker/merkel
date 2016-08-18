@@ -34,11 +34,11 @@ export class Commit {
  * @param migrationDir The migration directory
  * @param lastMigrationHead The commit sha1 of the commit when the last migration was Running
  */
-export async function getNewCommits(migrationDir: string, lastMigrationHead?: string): Promise<Commit[]> {
+export async function getNewCommits(migrationDir: string, lastMigrationHead?: Commit): Promise<Commit[]> {
     let command = 'git log --reverse --format=">>>>COMMIT%n%H%n%B"';
     let stdout: Buffer;
     try {
-        [stdout] = await exec(command + (lastMigrationHead ? ` ${lastMigrationHead}..HEAD` : ''));
+        [stdout] = await exec(command + (lastMigrationHead ? ` ${lastMigrationHead.sha1}..HEAD` : ''));
     } catch (err) {
         if (err.code !== 128) {
             throw err;
@@ -71,7 +71,7 @@ export function parseGitLog(gitLog: string, migrationDir: string): Commit[] {
         for (const command of commands) {
             const type = <MigrationType>command.shift();
             for (const name of command) {
-                commit.tasks.push(new Task({ type, migration: new Migration({ name, migrationDir }), commit }));
+                commit.tasks.push(new Task({ type, migration: new Migration({ name }), commit }));
             }
         }
         // strip commands from message
@@ -84,9 +84,9 @@ export function parseGitLog(gitLog: string, migrationDir: string): Commit[] {
 /**
  * Gets the SHA1 of the current git HEAD
  */
-export async function getHead(): Promise<string> {
+export async function getHead(): Promise<Commit> {
     const [stdout] = await exec('git rev-parse HEAD');
-    return stdout.toString().trim();
+    return new Commit({ sha1: stdout.toString().trim() });
 }
 
 // /**
