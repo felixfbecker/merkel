@@ -94,21 +94,24 @@ async function getAndShowStatus(adapter: DbAdapter, head: Commit, migrationDir: 
     const lastTask = await adapter.getLastMigrationTask();
     const commits = await getNewCommits(lastTask.head);
     process.stdout.write('\n');
-    await Promise.all([
-        lastTask.commit.loadSubject(),
-        lastTask.head.loadSubject(),
-        head.loadSubject()
-    ]);
     if (lastTask) {
+        await Promise.all([
+            lastTask.commit.loadSubject(),
+            lastTask.head.loadSubject()
+        ]);
         process.stdout.write(`Last migration:      ${lastTask.toString()}\n`);
         process.stdout.write(`Applied at:          ${lastTask.appliedAt}\n`);
         process.stdout.write(`Triggered by commit: ${lastTask.commit.toString()}\n`);
         process.stdout.write(`HEAD at execution:   ${lastTask.commit.toString()}\n`);
-        process.stdout.write(chalk.grey(`                        ${commits.length === 0 ? '‖' : `↕ ${commits.length} ${inflect('Commit', commits.length)}\n`}`));
-        process.stdout.write(`Current HEAD:        ${head.toString()}\n\n`);
     } else {
-        process.stdout.write('No migration run yet\n');
+        process.stdout.write(`Last migration:      No migration run yet\n`);
     }
+    if (head) {
+        await head.loadSubject();
+        process.stdout.write(chalk.grey(`                        ${commits.length === 1 ? '‖' : `↕ ${commits.length - 1} ${inflect('commit', commits.length - 1)}\n`}`));
+        process.stdout.write(`Current HEAD:        ${head.toString()}\n`);
+    }
+    process.stdout.write('\n');
     const relevantCommits = commits.filter(commit => commit.tasks.length > 0);
     if (relevantCommits.length === 0) {
         process.stdout.write('No pending migrations\n');
@@ -140,6 +143,7 @@ yargs.command(
             await adapter.init();
             const head = await getHead();
             await getAndShowStatus(adapter, head, argv.migrationDir);
+            process.stdout.write(`Run ${chalk.white.bold('merkel migrate')} to execute\n`);
             process.exit(0);
         } catch (err) {
             process.stderr.write(chalk.red(err.stack));
