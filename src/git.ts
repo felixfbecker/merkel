@@ -2,6 +2,7 @@
 import {exec} from 'mz/child_process';
 import * as chalk from 'chalk';
 import {Migration, MigrationType, Task} from './migration';
+import {resolve, basename} from 'path';
 
 export class Commit {
 
@@ -99,9 +100,30 @@ export async function getHead(): Promise<Commit> {
     return new Commit({ sha1: stdout.toString().trim() });
 }
 
-// /**
-//  * Adds the migration directory back to the index
-//  */
-// export async function addMigrationDir(migrationDir: string): Promise<void> {
-//     await exec(`git add ${migrationDir}`);
-// };
+export async function getTasksForNewCommit(message: string, migrationDir: string): Promise<Task[]> {
+    migrationDir = resolve(migrationDir);
+    const [stdout] = await exec('git diff --staged --name-status');
+    const output = stdout.toString().trim();
+    const tasks: Task[] = [];
+    // added migration files should be executed up
+    for (const line of output.split('\n')) {
+        const status = line.charAt(0);
+        const file = resolve(line.substr(1).trim());
+        if (status === 'A' && file.startsWith(migrationDir)) {
+            const name = basename(file).replace(/\.\w*$/, '');
+            tasks.push(new Task({ migration: new Migration({ name }) }));
+        }
+    }
+    return tasks;
+}
+
+export function isRevertCommit(message: string): boolean {
+    return /Revert/.test(message);
+}
+
+/**
+ * Adds the migration directory back to the index
+ */
+export async function addMigrationDir(migrationDir: string): Promise<void> {
+    await exec(`git add ${migrationDir}`);
+};

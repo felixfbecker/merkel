@@ -1,9 +1,8 @@
 
 import * as yargs from 'yargs';
-import {prepareCommitMessage} from './prepare-commit-message';
 import * as fs from 'mz/fs';
 import * as chalk from 'chalk';
-import {getNewCommits, Commit, getHead} from './git';
+import {getNewCommits, Commit, getHead, getTasksForNewCommit, isRevertCommit, addMigrationDir} from './git';
 import {Migration, Task, MigrationType} from './migration';
 import * as uuid from 'node-uuid';
 import mkdirp = require('mkdirp');
@@ -54,7 +53,7 @@ yargs
         description: 'The output directory for migration files (when using a transpiler)',
         nargs: 1,
         global: true,
-        default: './migrations'
+        default: (argv: Argv) => argv.migrationDir
     })
     .option('no-color', { desc: 'Disable colored output', global: true })
     .option('color', { desc: 'Force colored output even if color support was not detected', global: true })
@@ -199,7 +198,37 @@ yargs.command(
     async (argv: PrepareCommitMsgArgv) => {
         try {
             let msg = await fs.readFile(argv.msgfile, 'utf8');
-            msg = await prepareCommitMessage(msg);
+            // check that migrations have not been deleted by a revert
+            if (isRevertCommit(msg)) {
+                let addBackMigrationDir = true;
+                if ((<tty.ReadStream>process.stdin).isTTY) {
+                    const answers = await inquirer.prompt({
+                        name: 'addBackMigrationDir',
+                        type: 'confirm',
+                        message: 'Merkel has detected that migrations have been removed by a git revert. Add them back?'
+                    });
+                    addBackMigrationDir = <boolean>answers['addBackMigrationDir'];
+                }
+                if (addBackMigrationDir) {
+                    await addMigrationDir(argv.migrationDir);
+                }
+            }
+            // add commands
+            const tasks = await getTasksForNewCommit(msg, argv.migrationDir);
+            if (tasks.length > 0) {
+                msg += '\n\n# Merkel migrations that need to run after checking out this commit:\n';
+                const upTasks = tasks.filter(task => task.type === 'up');
+                const downTasks = tasks.filter(task => task.type === 'down');
+                let upCommand = '[merkel up ' + upTasks.reduce((prev, curr) => prev + curr.migration.name, '') + ']\n';
+                if (upCommand.length > 72) {
+                    upCommand = '[\n  merkel up\n' + upTasks.reduce((prev, curr) => '  ' + prev + curr.migration.name + '\n', '') + ']\n';
+                }
+                let downCommand = '[merkel up ' + downTasks.reduce((prev, curr) => prev + curr.migration.name, '') + ']';
+                if (downCommand.length > 72) {
+                    downCommand = '[\n  merkel up\n' + downTasks.reduce((prev, curr) => '  ' + prev + curr.migration.name + '\n', '') + ']\n';
+                }
+                msg += upCommand + downCommand;
+            }
             process.exit(0);
         } catch (err) {
             process.stderr.write(chalk.red(err.stack));
@@ -315,7 +344,7 @@ yargs.command(
                 for (const task of commit.tasks) {
                     process.stdout.write(task.toString() + '...');
                     const interval = setInterval(() => process.stdout.write('.'), 100);
-                    await task.execute(argv.migrationDir, adapter, head, commit);
+                    await task.execute(argv.migrationOutDir, adapter, head, commit);
                     clearInterval(interval);
                     process.stdout.write(' Success\n');
                 }
@@ -345,7 +374,7 @@ function migrationCommand(type: MigrationType) {
             });
             process.stdout.write('Executing' + task.toString() + '...');
             try {
-                await task.execute(argv.migrationDir, adapter, head);
+                await task.execute(argv.migrationOutDir, adapter, head);
                 process.stdout.write(' Success\n');
             } catch (err) {
                 process.stderr.write(chalk.red('\nError: ' + err.stack));
