@@ -25,9 +25,12 @@ export function getAdapterFromUrl(url: string): DbAdapter {
     }
 }
 
-interface Argv extends yargs.Argv {
+interface Config {
     migrationDir?: string;
+    migrationOutDir?: string;
 }
+
+interface Argv extends yargs.Argv, Config { }
 
 const dbOption = {
     description: 'The connection URL for the database',
@@ -37,11 +40,18 @@ const dbOption = {
 
 yargs
     .env('MERKEL')
+    .option('config', { config: true, default: '.merkelrc.json' })
     .demand(1)
     .usage('\nUsage: merkel [options] <command>')
     .wrap(90)
     .option('migration-dir', {
         description: 'The directory for migration files',
+        nargs: 1,
+        global: true,
+        default: './migrations'
+    })
+    .option('migration-out-dir', {
+        description: 'The output directory for migration files (when using a transpiler)',
         nargs: 1,
         global: true,
         default: './migrations'
@@ -54,36 +64,149 @@ yargs
     .alias('help', 'h')
     .epilogue('All options can also be passed through env vars, like MERKEL_DB for --db');
 
-yargs.command('add-git-hook', false, {}, async (argv) => {
-    const hookPath = path.normalize('.git/hooks/prepare-commit-message');
-    const hook = '\n\nmerkel prepare-commit-message $1 $2 $3\n';
+async function addGitHook(): Promise<void> {
+    const hookPath = path.normalize('.git/hooks/prepare-commit-msg');
+    const hook = '\nnode_modules/.bin/merkel prepare-commit-msg $1 $2 $3\n';
     try {
-        await fs.access(hookPath);
+        const content = await fs.readFile(hookPath, 'utf8');
+        if (content.indexOf(hook.substring(1, hook.length - 1)) !== -1) {
+            process.stdout.write('Hook already found\n');
+            process.exit(0);
+        }
         await fs.appendFile(hookPath, hook);
-        process.stdout.write('\nAppended to ' + chalk.cyan(hookPath));
+        process.stdout.write(`Appended hook to ${chalk.cyan(hookPath)}\n`);
     } catch (err) {
-        await fs.writeFile(hookPath, '#!/usr/bin/env node\n' + hook);
-        process.stdout.write('\nCreated ' + chalk.cyan(hookPath));
+        await fs.writeFile(hookPath, '#!/bin/sh\n' + hook);
+        process.stdout.write(`Created ${chalk.cyan(hookPath)}\n`);
     }
-});
-
-interface PrepareCommitMsgArgv extends Argv {
-    msgfile: string;
-    source: string;
-    sha1: string;
 }
 
-yargs.command('prepare-commit-msg <msgfile> <source> <sha1>', false, {}, async (argv: PrepareCommitMsgArgv) => {
-    try {
-        type CommitSource = 'template' | 'message' | 'commit';
-        let msg = await fs.readFile(argv.msgfile, 'utf8');
-        msg = await prepareCommitMessage(msg);
-        process.exit(0);
-    } catch (err) {
-        process.stderr.write(chalk.red(err.stack));
-        process.exit(1);
+interface InitArgv extends Argv {
+    db?: string;
+}
+
+yargs.command(
+    'init',
+    'Initializes merkel configuration interactively',
+    { db: Object.assign(dbOption, { required: false }) },
+    async (argv: InitArgv) => {
+        try {
+            process.stdout.write('\n');
+            try {
+                await fs.access('.merkelrc.json');
+                process.stderr.write('.merkelrc.json already exists');
+                process.exit(1);
+            } catch (err) {
+                // continue
+            }
+            const config: Config = {};
+            // try to read tsconfig
+            let tsconfig: any;
+            try {
+                tsconfig = JSON.parse(await fs.readFile('tsconfig.json', 'utf8'));
+            } catch (err) {
+                // ignore
+            }
+            const {migrationDir, migrationOutDir, shouldAddGitHook, initMetaNow} = await inquirer.prompt([
+                {
+                    name: 'migrationDir',
+                    message: tsconfig ? 'Directory for new migration files:' : 'Directory for migration files:',
+                    default: (tsconfig && tsconfig.compilerOptions && tsconfig.compilerOptions.rootDir + path.sep + 'migrations') || './migrations'
+                },
+                {
+                    name: 'migrationOutDir',
+                    message: 'Directory for compiled migration files:',
+                    default: (tsconfig && tsconfig.compilerOptions && tsconfig.compilerOptions.outDir + path.sep + 'migrations') || './migrations',
+                    when: () => !!tsconfig
+                },
+                {
+                    name: 'shouldAddGitHook',
+                    type: 'confirm',
+                    message: 'Add a git hook that adds commands to your commit messages (you can still edit them)?'
+                },
+                {
+                    name: 'initMetaNow',
+                    type: 'confirm',
+                    message: 'Initialize merkel metadata table now (otherwise done automatically later)?',
+                    when: () => !!argv.db
+                }
+            ]);
+            // create migration dir
+            const made = await new Promise((resolve, reject) => mkdirp(<string>migrationDir, (err, made) => err ? reject(err) : resolve(made)));
+            if (made) {
+                process.stdout.write(`Created ${chalk.cyan(<string>migrationDir)}\n`);
+            }
+            // create config file
+            config.migrationDir = <string>migrationDir;
+            config.migrationOutDir = <string>migrationOutDir;
+            await fs.writeFile('.merkelrc.json', JSON.stringify(config, null, 2) + '\n');
+            process.stdout.write(`Created ${chalk.cyan(path.join('.', '.merkelrc.json'))}\n`);
+            // init database
+            if (initMetaNow) {
+                await getAdapterFromUrl(argv.db).init();
+            }
+            // add git hook
+            if (shouldAddGitHook) {
+                await addGitHook();
+            }
+            process.exit(0);
+        } catch (err) {
+            process.stdout.write(chalk.red(err.stack));
+            process.exit(1);
+        }
     }
-});
+);
+
+yargs.command(
+    'add-git-hook',
+    'Adds a prepare-commit-msg hook to git that automatically adds merkel commands to your commit messages',
+    {},
+    async () => {
+        try {
+            process.stdout.write('\n');
+            await addGitHook();
+            process.exit(0);
+        } catch (err) {
+            process.stderr.write(chalk.red(err.stack));
+            process.exit(1);
+        }
+    }
+);
+
+type CommitSource = 'template' | 'message' | 'merge' | 'squash' | 'commit';
+interface PrepareCommitMsgArgv extends Argv {
+    msgfile: string;
+    /**
+     * source of the commit message, and can be:
+     *  - message (if a -m or -F option was given)
+     *  - template (if a -t option was given or the configuration option commit.template is set)
+     *  - merge (if the commit is a merge or a .git/MERGE_MSG file exists)
+     *  - squash (if a .git/SQUASH_MSG file exists)
+     *  - commit, followed by a commit SHA-1 (if a -c, -C or --amend option was given).
+     */
+    source?: CommitSource;
+    sha1?: string;
+}
+
+yargs.command(
+    'prepare-commit-msg <msgfile> <source> <sha1>',
+    false,
+    {
+        migrationDir: {
+            required: true
+        }
+    },
+    async (argv: PrepareCommitMsgArgv) => {
+        try {
+            let msg = await fs.readFile(argv.msgfile, 'utf8');
+            msg = await prepareCommitMessage(msg);
+            process.exit(0);
+        } catch (err) {
+            process.stderr.write(chalk.red(err.stack));
+            process.exit(1);
+        }
+    }
+);
 
 interface StatusArgv extends Argv {
     db: string;
