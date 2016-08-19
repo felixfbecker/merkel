@@ -21,7 +21,7 @@ export class Commit {
 
     /** The first line of the commit message */
     get subject(): string {
-        return this.message.split('\n', 1)[0];
+        return this.message && this.message.split('\n', 1)[0];
     }
 
     constructor(options?: { sha1?: string, message?: string, tasks?: Task[] }) {
@@ -39,7 +39,7 @@ export class Commit {
     }
 
     public toString(): string {
-        return chalk.yellow(this.shortSha1) + ' ' + this.subject;
+        return chalk.yellow(this.shortSha1) + ' ' + (this.subject ? this.subject : '<unknown commit>');
     }
 }
 

@@ -11,7 +11,6 @@
     "yargs": "registry:npm/yargs#5.0.0+20160817153026"
   },
   "globalDependencies": {
-    "inflection": "registry:dt/inflection#1.5.0+20160316155526",
     "mz": "registry:dt/mz#0.0.0+20160811111312"
   },
   "globalDevDependencies": {
