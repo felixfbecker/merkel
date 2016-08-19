@@ -80,7 +80,7 @@ yargs.command('prepare-commit-msg <msgfile> <source> <sha1>', false, {}, async (
         msg = await prepareCommitMessage(msg);
         process.exit(0);
     } catch (err) {
-        process.stderr.write(chalk.red(err + ''));
+        process.stderr.write(chalk.red(err.stack));
         process.exit(1);
     }
 });
@@ -200,7 +200,7 @@ yargs.command(
             process.stdout.write(chalk.green('\nAll migrations successful\n'));
             process.exit(0);
         } catch (err) {
-            process.stderr.write('\n' + chalk.red(err + ''));
+            process.stderr.write('\n' + chalk.red(err.stack));
             process.exit(1);
         }
     });
@@ -320,7 +320,7 @@ yargs.command('generate', 'Generates a new migration file', {
         process.stdout.write('\nCreated ' + chalk.cyan(relativePath + path.sep + name + ext) + '\n');
         process.exit(0);
     } catch (err) {
-        process.stderr.write(chalk.red(err + ''));
+        process.stderr.write(chalk.red(err.stack));
         process.exit(1);
     }
 });
