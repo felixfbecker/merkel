@@ -1,2 +1,2 @@
 #!/usr/bin/env node
-require('../dist/cli').default.parse(process.argv);
+require('../dist/cli').default.parse(process.argv.slice(2));
