@@ -1,7 +1,7 @@
 
 import {exec} from 'mz/child_process';
 import * as chalk from 'chalk';
-import {Migration, MigrationType, Task, TaskList} from './migration';
+import {Migration, TaskType, Task, TaskList} from './migration';
 import {resolve, basename} from 'path';
 
 export class Commit {
@@ -80,7 +80,7 @@ export function parseGitLog(gitLog: string): Commit[] {
         const match = message.match(regExp);
         const commands: string[][] = match ? match.map(command => command.replace(/^\s*\[\s*/, '').replace(/\s*\]\s*$/, '').split(/\s+/g).slice(1)) : [];
         for (const command of commands) {
-            const type = <MigrationType>command.shift();
+            const type = <TaskType>command.shift();
             for (const name of command) {
                 commit.tasks.push(new Task({ type, migration: new Migration({ name }), commit }));
             }

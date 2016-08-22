@@ -5,15 +5,15 @@ import {DbAdapter} from './adapter';
 import {Commit} from './git';
 import glob = require('globby');
 
-export type MigrationType = 'up' | 'down';
+export type TaskType = 'up' | 'down';
 
 export class MigrationNotFoundError extends Error {
     constructor(public migration: Migration, public migrationDir: string) {
         super('Error: Migration file ' + migrationDir + sep + chalk.bold(migration.name) + '.js does not exist');
     }
 }
-export class MigrationTypeNotFoundError extends Error {
-    constructor(public migration: Migration, public migrationType: MigrationType, public migrationDir: string) {
+export class TaskTypeNotFoundError extends Error {
+    constructor(public migration: Migration, public taskType: TaskType, public migrationDir: string) {
         super('Error: Migration file ' + migrationDir + sep + chalk.bold(migration.name) + '.js does not export an up function');
     }
 }
@@ -75,7 +75,7 @@ export class TaskList extends Array<Task> {
 export class Task {
 
     /** The function that was executed */
-    public type: MigrationType;
+    public type: TaskType;
 
     /** The migration that was run */
     public migration: Migration;
@@ -94,7 +94,7 @@ export class Task {
     /** The date when the migration was applied if already executed */
     public appliedAt: Date;
 
-    constructor(options?: { id?: number, type?: MigrationType, migration?: Migration, commit?: Commit, head?: Commit, appliedAt?: Date }) {
+    constructor(options?: { id?: number, type?: TaskType, migration?: Migration, commit?: Commit, head?: Commit, appliedAt?: Date }) {
         Object.assign(this, options);
     }
 
@@ -111,7 +111,7 @@ export class Task {
             throw new MigrationNotFoundError(this.migration, migrationDir);
         }
         if (typeof migrationExports.up !== 'function') {
-            throw new MigrationTypeNotFoundError(this.migration, this.type, migrationDir);
+            throw new TaskTypeNotFoundError(this.migration, this.type, migrationDir);
         }
         try {
             let exceptionHandler: Function;

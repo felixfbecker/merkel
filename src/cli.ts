@@ -3,7 +3,7 @@ import * as yargs from 'yargs';
 import * as fs from 'mz/fs';
 import * as chalk from 'chalk';
 import {getNewCommits, Commit, getHead, getTasksForNewCommit, isRevertCommit, addMigrationDir} from './git';
-import {Migration, Task, MigrationType} from './migration';
+import {Migration, Task, TaskType} from './migration';
 import * as uuid from 'node-uuid';
 import mkdirp = require('mkdirp');
 import * as path from 'path';
@@ -188,7 +188,7 @@ interface PrepareCommitMsgArgv extends Argv {
 }
 
 yargs.command(
-    'prepare-commit-msg <msgfile> <source> <sha1>',
+    'prepare-commit-msg <msgfile> [source] [sha1]',
     false,
     {
         migrationDir: {
@@ -349,7 +349,7 @@ interface MigrationCommandArgv extends Argv {
     db: string;
 }
 
-function migrationCommand(type: MigrationType) {
+function migrationCommand(type: TaskType) {
     return async (argv: MigrationCommandArgv) => {
         const head = await getHead();
         const adapter = getAdapterFromUrl(argv.db);

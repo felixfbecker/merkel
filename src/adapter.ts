@@ -1,11 +1,11 @@
 
-import {Task, Migration, MigrationType} from './migration';
+import {Task, Migration, TaskType} from './migration';
 import {Commit} from './git';
 
 export interface TableRow {
     id: number;
     name: string;
-    type: MigrationType;
+    type: TaskType;
     commit: string;
     head: string;
     applied_at: Date;
