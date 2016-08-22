@@ -53,7 +53,7 @@ yargs
         description: 'The output directory for migration files (when using a transpiler)',
         nargs: 1,
         global: true,
-        default: (argv: Argv) => argv.migrationDir
+        default: './migrations'
     })
     .option('no-color', { desc: 'Disable colored output', global: true })
     .option('color', { desc: 'Force colored output even if color support was not detected', global: true })
