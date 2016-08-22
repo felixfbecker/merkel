@@ -93,7 +93,7 @@ yargs.command(
             process.stdout.write('\n');
             try {
                 await fs.access('.merkelrc.json');
-                process.stderr.write('.merkelrc.json already exists');
+                process.stderr.write('.merkelrc.json already exists\n');
                 process.exit(1);
             } catch (err) {
                 // continue
