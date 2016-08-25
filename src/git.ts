@@ -1,7 +1,7 @@
 
 import {exec} from 'mz/child_process';
 import * as chalk from 'chalk';
-import {Migration, MigrationType, Task} from './migration';
+import {Migration, MigrationType, Task, TaskList} from './migration';
 import {resolve, basename} from 'path';
 
 export class Commit {
@@ -13,7 +13,7 @@ export class Commit {
     message: string;
 
     /** Migrations that should be run, in the order they were defined in the commit message */
-    tasks: Task[] = [];
+    tasks: TaskList = new TaskList();
 
     /** The first 6 letters of the SHA1 */
     get shortSha1(): string {
@@ -25,7 +25,7 @@ export class Commit {
         return this.message && this.message.split('\n', 1)[0];
     }
 
-    constructor(options?: { sha1?: string, message?: string, tasks?: Task[] }) {
+    constructor(options?: { sha1?: string, message?: string, tasks?: TaskList }) {
         Object.assign(this, options);
     }
 
@@ -100,11 +100,11 @@ export async function getHead(): Promise<Commit> {
     return new Commit({ sha1: stdout.toString().trim() });
 }
 
-export async function getTasksForNewCommit(message: string, migrationDir: string): Promise<Task[]> {
+export async function getTasksForNewCommit(message: string, migrationDir: string): Promise<TaskList> {
     migrationDir = resolve(migrationDir);
     const [stdout] = await exec('git diff --staged --name-status');
     const output = stdout.toString().trim();
-    const tasks: Task[] = [];
+    const tasks: TaskList = new TaskList();
     // added migration files should be executed up
     for (const line of output.split('\n')) {
         const status = line.charAt(0);

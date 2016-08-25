@@ -214,21 +214,8 @@ yargs.command(
                 }
             }
             // add commands
-            const tasks = await getTasksForNewCommit(msg, argv.migrationDir);
-            if (tasks.length > 0) {
-                msg += '\n\n# Merkel migrations that need to run after checking out this commit:\n';
-                const upTasks = tasks.filter(task => task.type === 'up');
-                const downTasks = tasks.filter(task => task.type === 'down');
-                let upCommand = '[merkel up ' + upTasks.reduce((prev, curr) => prev + curr.migration.name, '') + ']\n';
-                if (upCommand.length > 72) {
-                    upCommand = '[\n  merkel up\n' + upTasks.reduce((prev, curr) => '  ' + prev + curr.migration.name + '\n', '') + ']\n';
-                }
-                let downCommand = '[merkel up ' + downTasks.reduce((prev, curr) => prev + curr.migration.name, '') + ']';
-                if (downCommand.length > 72) {
-                    downCommand = '[\n  merkel up\n' + downTasks.reduce((prev, curr) => '  ' + prev + curr.migration.name + '\n', '') + ']\n';
-                }
-                msg += upCommand + downCommand;
-            }
+            const taskList = await getTasksForNewCommit(msg, argv.migrationDir);
+            msg += taskList.toString(true);
             process.exit(0);
         } catch (err) {
             process.stderr.write(chalk.red(err.stack));

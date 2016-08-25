@@ -45,6 +45,33 @@ export class Migration {
     }
 }
 
+export class TaskList extends Array<Task> {
+
+    /**
+     * Converts the task list to a string of commands that can be embedded in a commit message
+     */
+    public toString(withComment: boolean = false): string {
+        let str = '';
+        if (this.length > 0) {
+            if (withComment) {
+                str += '\n\n# Merkel migrations that need to run after checking out this commit:\n';
+            }
+            const upTasks = this.filter(task => task.type === 'up');
+            const downTasks = this.filter(task => task.type === 'down');
+            let upCommand = '[merkel up ' + upTasks.reduce((prev, curr) => prev + curr.migration.name, '') + ']\n';
+            if (upCommand.length > 72) {
+                upCommand = '[\n  merkel up\n' + upTasks.reduce((prev, curr) => '  ' + prev + curr.migration.name + '\n', '') + ']\n';
+            }
+            let downCommand = '[merkel up ' + downTasks.reduce((prev, curr) => prev + curr.migration.name, '') + ']';
+            if (downCommand.length > 72) {
+                downCommand = '[\n  merkel up\n' + downTasks.reduce((prev, curr) => '  ' + prev + curr.migration.name + '\n', '') + ']\n';
+            }
+            str += upCommand + downCommand;
+        }
+        return str;
+    }
+}
+
 export class Task {
 
     /** The function that was executed */
