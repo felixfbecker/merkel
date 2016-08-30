@@ -17,7 +17,7 @@ Run `merkel init` to initialize a `.merkelrc.json` and install a git hook
 > No, but it holds the migration directory, and if you use it, you could change it later
 > because the migration directory at any time is known through git.
 
-
+  
 
 > **Is the git hook required?**  
 > No, but it helps you type less. Read on to learn more.
