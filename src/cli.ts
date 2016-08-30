@@ -381,7 +381,7 @@ yargs.command('generate', 'Generates a new migration file', {
     }
 }, async (argv: GenerateArgv) => {
     try {
-        const name = argv.name || uuid.v4();
+        const name = argv.name || uuid.v1();
         const migrationDir = path.resolve(argv.migrationDir);
         let template: string;
         let ext: string = '';
