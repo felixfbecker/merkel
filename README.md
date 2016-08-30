@@ -18,6 +18,7 @@ Run `merkel init` to initialize a `.merkelrc.json` and install a git hook
 > because the migration directory at any time is known through git.
 
 
+
 > **Is the git hook required?**  
 > No, but it helps you type less. Read on to learn more.
 
