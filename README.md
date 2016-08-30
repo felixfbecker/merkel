@@ -17,6 +17,7 @@ Run `merkel init` to initialize a `.merkelrc.json` and install a git hook
 > No, but it holds the migration directory, and if you use it, you could change it later
 > because the migration directory at any time is known through git.
 
+
 > **Is the git hook required?**  
 > No, but it helps you type less. Read on to learn more.
 
@@ -187,7 +188,7 @@ If not, then this is not possible without using the ability to run old migration
 ## Programatic usage
 
 You can use merkel programatically, for example in your favourite task runner.
-API documentation is available [here]().
+API documentation is available [here](http://merkel.surge.sh/).
 
 TypeScript definitions are included.
 
