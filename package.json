@@ -15,7 +15,8 @@
     "postinstall": "merkel init || exit 0",
     "build": "tsc -p .",
     "watch": "tsc -w -p .",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "typedoc": "typedoc --module es2015 --target es2015 --mode modules --readme none --out typedoc src typings/index.d.ts"
   },
   "author": "Felix Becker <felix.b@outlook.com>",
   "license": "ISC",

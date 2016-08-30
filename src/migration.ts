@@ -9,12 +9,12 @@ export type TaskType = 'up' | 'down';
 
 export class MigrationNotFoundError extends Error {
     constructor(public migration: Migration, public migrationDir: string) {
-        super('Error: Migration file ' + migrationDir + sep + chalk.bold(migration.name) + '.js does not exist');
+        super('Migration file ' + migrationDir + sep + chalk.bold(migration.name) + '.js does not exist');
     }
 }
 export class TaskTypeNotFoundError extends Error {
     constructor(public migration: Migration, public taskType: TaskType, public migrationDir: string) {
-        super('Error: Migration file ' + migrationDir + sep + chalk.bold(migration.name) + '.js does not export an up function');
+        super('Migration file ' + migrationDir + sep + chalk.bold(migration.name) + '.js does not export an up function');
     }
 }
 export class MigrationExecutionError extends Error {
@@ -54,21 +54,27 @@ export class TaskList extends Array<Task> {
         let str = '';
         if (this.length > 0) {
             if (withComment) {
-                str += '\n\n# Merkel migrations that need to run after checking out this commit:\n';
+                str += '# Merkel migrations that need to run after checking out this commit:\n';
             }
             const upTasks = this.filter(task => task.type === 'up');
             const downTasks = this.filter(task => task.type === 'down');
-            let upCommand = '[merkel up ' + upTasks.reduce((prev, curr) => prev + curr.migration.name, '') + ']\n';
+            let upCommand = '[merkel up ' + upTasks.map(task => task.migration.name).join(' ') + ']\n';
             if (upCommand.length > 72) {
-                upCommand = '[\n  merkel up\n' + upTasks.reduce((prev, curr) => '  ' + prev + curr.migration.name + '\n', '') + ']\n';
+                upCommand = '[\n  merkel up\n  ' + upTasks.map(task => task.migration.name).join('\n  ') + ']\n';
             }
-            let downCommand = '[merkel up ' + downTasks.reduce((prev, curr) => prev + curr.migration.name, '') + ']';
+            let downCommand = '[merkel down ' + downTasks.map(task => task.migration.name).join(' ') + ']';
             if (downCommand.length > 72) {
-                downCommand = '[\n  merkel up\n' + downTasks.reduce((prev, curr) => '  ' + prev + curr.migration.name + '\n', '') + ']\n';
+                downCommand = '[\n  merkel down\n' + downTasks.map(task => task.migration.name).join('\n  ') + ']\n';
             }
             str += upCommand + downCommand;
         }
         return str;
+    }
+
+    public async execute(migrationDir: string, adapter: DbAdapter, head: Commit, commit?: Commit): Promise<void> {
+        for (const task of this) {
+            await task.execute(migrationDir, adapter, head, commit);
+        }
     }
 }
 
@@ -96,6 +102,10 @@ export class Task {
 
     constructor(options?: { id?: number, type?: TaskType, migration?: Migration, commit?: Commit, head?: Commit, appliedAt?: Date }) {
         Object.assign(this, options);
+    }
+
+    public invert() {
+        return Object.assign(new Task(this), { type: (<any>{up: 'down', down: 'up'})[this.type] });
     }
 
     /**

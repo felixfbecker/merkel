@@ -1,8 +1,12 @@
 
-import {exec} from 'mz/child_process';
+import {execFile} from 'mz/child_process';
 import * as chalk from 'chalk';
 import {Migration, TaskType, Task, TaskList} from './migration';
 import {resolve, basename} from 'path';
+
+export class CommitSequence {
+    constructor(public commits: Commit[], public isReversed = false) {}
+}
 
 export class Commit {
 
@@ -34,7 +38,7 @@ export class Commit {
      */
     public async loadSubject(): Promise<void> {
         if (this.message === undefined) {
-            const [stdout] = await exec(`git log --format=%B ${this.sha1}`);
+            const [stdout] = await execFile('git', ['log', '--format=%B', this.sha1]);
             this.message = stdout.toString();
         }
     }
@@ -48,20 +52,37 @@ export class Commit {
  * Gets all commits in the migration dir since the last migration head
  * @param from The commit sha1 of the commit when the last migration was running
  */
-export async function getNewCommits(from?: Commit): Promise<Commit[]> {
-    let command = 'git log --reverse --format=">>>>COMMIT%n%H%n%B"';
+export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
+    // check if the HEAD is behind the last migration
+    let headBehindLastMigration = false;
+    if (since) {
+        try {
+            await execFile('git', ['merge-base', '--is-ancestor', 'HEAD', since.sha1]);
+            headBehindLastMigration = false;
+        } catch (err) {
+            if (err.code !== 1) {
+                throw err;
+            }
+            headBehindLastMigration = true;
+        }
+    }
+    const args = ['log', '--reverse', '--format=>>>>COMMIT%n%H%n%B'];
+    if (since) {
+        args.push(since.sha1 + '..HEAD');
+    }
     let stdout: Buffer;
     try {
-        [stdout] = await exec(command + (from ? ` ${from.sha1}..HEAD` : ''));
+        [stdout] = await execFile('git', args);
     } catch (err) {
         if (err.code !== 128) {
             throw err;
         }
         // the last migration head does not exist in this repository
-        [stdout] = await exec(command);
+        args.pop();
+        [stdout] = await execFile('git');
     }
     const output = stdout.toString().trim();
-    return parseGitLog(output);
+    return new CommitSequence(parseGitLog(output), headBehindLastMigration);
 }
 
 /**
@@ -96,13 +117,13 @@ export function parseGitLog(gitLog: string): Commit[] {
  * Gets the SHA1 of the current git HEAD
  */
 export async function getHead(): Promise<Commit> {
-    const [stdout] = await exec('git rev-parse HEAD');
+    const [stdout] = await execFile('git', ['rev-parse', 'HEAD']);
     return new Commit({ sha1: stdout.toString().trim() });
 }
 
 export async function getTasksForNewCommit(message: string, migrationDir: string): Promise<TaskList> {
     migrationDir = resolve(migrationDir);
-    const [stdout] = await exec('git diff --staged --name-status');
+    const [stdout] = await execFile('git', ['diff', '--staged', '--name-status']);
     const output = stdout.toString().trim();
     const tasks: TaskList = new TaskList();
     // added migration files should be executed up
@@ -111,7 +132,7 @@ export async function getTasksForNewCommit(message: string, migrationDir: string
         const file = resolve(line.substr(1).trim());
         if (status === 'A' && file.startsWith(migrationDir)) {
             const name = basename(file).replace(/\.\w*$/, '');
-            tasks.push(new Task({ migration: new Migration({ name }) }));
+            tasks.push(new Task({ type: 'up', migration: new Migration({ name }) }));
         }
     }
     return tasks;
@@ -120,10 +141,3 @@ export async function getTasksForNewCommit(message: string, migrationDir: string
 export function isRevertCommit(message: string): boolean {
     return /Revert/.test(message);
 }
-
-/**
- * Adds the migration directory back to the index
- */
-export async function addMigrationDir(migrationDir: string): Promise<void> {
-    await exec(`git add ${migrationDir}`);
-};

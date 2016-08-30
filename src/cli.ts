@@ -2,7 +2,7 @@
 import * as yargs from 'yargs';
 import * as fs from 'mz/fs';
 import * as chalk from 'chalk';
-import {getNewCommits, Commit, getHead, getTasksForNewCommit, isRevertCommit, addMigrationDir} from './git';
+import {getNewCommits, Commit, getHead, getTasksForNewCommit, isRevertCommit} from './git';
 import {Migration, Task, TaskType} from './migration';
 import * as uuid from 'node-uuid';
 import mkdirp = require('mkdirp');
@@ -200,18 +200,7 @@ yargs.command(
             let msg = await fs.readFile(argv.msgfile, 'utf8');
             // check that migrations have not been deleted by a revert
             if (isRevertCommit(msg)) {
-                let addBackMigrationDir = true;
-                if ((<tty.ReadStream>process.stdin).isTTY) {
-                    const answers = await inquirer.prompt({
-                        name: 'addBackMigrationDir',
-                        type: 'confirm',
-                        message: 'Merkel has detected that migrations have been removed by a git revert. Add them back?'
-                    });
-                    addBackMigrationDir = <boolean>answers['addBackMigrationDir'];
-                }
-                if (addBackMigrationDir) {
-                    await addMigrationDir(argv.migrationDir);
-                }
+                process.stderr.write(chalk.bgYellow('WARNING: mirations have been removed by a git revert'));
             }
             // add commands
             const taskList = await getTasksForNewCommit(msg, argv.migrationDir);
@@ -230,7 +219,7 @@ interface StatusArgv extends Argv {
 
 async function getAndShowStatus(adapter: DbAdapter, head: Commit, migrationDir: string): Promise<Commit[]> {
     const lastTask = await adapter.getLastMigrationTask();
-    const commits = await getNewCommits(lastTask.head);
+    const {commits, isReversed} = await getNewCommits(lastTask.head);
     process.stdout.write('\n');
     if (lastTask) {
         await Promise.all([lastTask.commit, lastTask.head].map(async (commit) => {
@@ -251,7 +240,7 @@ async function getAndShowStatus(adapter: DbAdapter, head: Commit, migrationDir: 
     }
     if (head) {
         await head.loadSubject();
-        process.stdout.write(chalk.grey(`                        ${commits.length === 1 ? '‖' : `↕ ${commits.length - 1} commit${commits.length > 2 ? 's' : ''}\n`}`));
+        process.stdout.write(chalk.grey(`                        ${commits.length === 1 ? '‖' : `${isReversed ? '↑' : '↓'} ${commits.length - 1} commit${commits.length > 2 ? 's' : ''}\n`}`));
         process.stdout.write(`Current HEAD:        ${head.toString()}\n`);
     }
     process.stdout.write('\n');
@@ -265,11 +254,7 @@ async function getAndShowStatus(adapter: DbAdapter, head: Commit, migrationDir: 
     for (const commit of relevantCommits) {
         process.stdout.write(commit.toString() + '\n');
         for (const task of commit.tasks) {
-            if (task.type === 'up') {
-                process.stdout.write(task.toString() + '\n');
-            } else if (task.type === 'down') {
-                process.stdout.write(task.toString() + '\n');
-            }
+            process.stdout.write((isReversed ? task.invert() : task).toString() + '\n');
         }
         process.stdout.write(`\n`);
     }
