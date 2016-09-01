@@ -34,7 +34,9 @@
     "yargs": "^5.0.0"
   },
   "devDependencies": {
+    "del": "^2.2.2",
     "mocha": "^3.0.2",
+    "os-tmpdir": "^1.0.1",
     "pg": "^6.1.0",
     "rimraf": "^2.5.4",
     "source-map-support": "^0.4.2",

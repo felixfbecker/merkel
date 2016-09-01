@@ -2,6 +2,7 @@
   "name": "merkel",
   "dependencies": {
     "chalk": "registry:npm/chalk#1.1.1+20160812215109",
+    "del": "registry:npm/del#2.2.0+20160416211512",
     "globby": "registry:npm/globby#3.0.0+20160723033700",
     "inquirer": "registry:npm/inquirer#1.0.0+20160723033700",
     "lodash": "registry:npm/lodash#4.0.0+20160723033700",

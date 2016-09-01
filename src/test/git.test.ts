@@ -34,3 +34,33 @@
 //         });
 //     });
 // });
+
+import {addGitHook} from '../git';
+import {execFile} from 'mz/child_process';
+import * as assert from 'assert';
+import * as fs from 'mz/fs';
+import * as path from 'path';
+import * as del from 'del';
+const tmpdir = require('os-tmpdir')();
+const repo = path.join(tmpdir, 'merkel_test_repo');
+
+describe('git', () => {
+    before(async () => {
+        if (!(await fs.exists(repo))) {
+            await fs.mkdir(repo);
+        }
+        process.chdir(repo);
+        await del('./.git/**');
+        return execFile('git', ['init']);
+    });
+    describe('hook', () => {
+        it('should add githook', async () => {
+            await addGitHook();
+            const hook = await fs.readFile(path.join(process.cwd(), '.git/hooks/prepare-commit-msg'), 'utf8');
+            assert(hook.includes('merkel prepare-commit-msg'));
+        });
+    });
+    after(() => {
+        return del('./.git/**');
+    });
+});
