@@ -1,6 +1,8 @@
 
 import {execFile} from 'mz/child_process';
 import * as chalk from 'chalk';
+import * as path from 'path';
+import * as fs from 'mz/fs';
 import {Migration, TaskType, Task, TaskList} from './migration';
 import {resolve, basename} from 'path';
 
@@ -83,6 +85,23 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     }
     const output = stdout.toString().trim();
     return new CommitSequence(parseGitLog(output), headBehindLastMigration);
+}
+
+export async function addGitHook(): Promise<void> {
+    const hookPath = path.normalize('.git/hooks/prepare-commit-msg');
+    const hook = '\nnode_modules/.bin/merkel prepare-commit-msg $1 $2 $3\n';
+    try {
+        const content = await fs.readFile(hookPath, 'utf8');
+        if (content.indexOf(hook.substring(1, hook.length - 1)) !== -1) {
+            process.stdout.write('Hook already found\n');
+            process.exit(0);
+        }
+        await fs.appendFile(hookPath, hook);
+        process.stdout.write(`Appended hook to ${chalk.cyan(hookPath)}\n`);
+    } catch (err) {
+        await fs.writeFile(hookPath, '#!/bin/sh\n' + hook);
+        process.stdout.write(`Created ${chalk.cyan(hookPath)}\n`);
+    }
 }
 
 /**
