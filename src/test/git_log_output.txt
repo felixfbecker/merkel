@@ -11,9 +11,11 @@ and 900931208ae7dabfd9ede49a78d4a961aa8043ba.
 b9fb8f15176d958d42dba4f14e35f1bf71ec0be9
 Change the User model
 
-Add column username to User model
+[
+  merkel up
+  694b8b6c-3aaa-4e4d-8d54-76515ba90617
+  d9271b98-1a2e-445f-8363-783b2bee0ef0
+]
 >>>>COMMIT
 900931208ae7dabfd9ede49a78d4a961aa8043ba
-Change the User model
-
-Add email column to User model
+Initial Commit

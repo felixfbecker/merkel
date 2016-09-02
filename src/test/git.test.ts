@@ -35,7 +35,16 @@
 //     });
 // });
 
-import {addGitHook} from '../git';
+import {
+    addGitHook,
+    getNewCommits,
+    getHead,
+    Commit,
+    NoCommitsError,
+    isRevertCommit,
+    parseGitLog,
+    getTasksForNewCommit
+ } from '../git';
 import {execFile} from 'mz/child_process';
 import * as assert from 'assert';
 import * as fs from 'mz/fs';
@@ -45,12 +54,12 @@ const tmpdir = require('os-tmpdir')();
 const repo = path.join(tmpdir, 'merkel_test_repo');
 
 describe('git', () => {
-    before(async () => {
+    beforeEach(async () => {
         if (!(await fs.exists(repo))) {
             await fs.mkdir(repo);
         }
         process.chdir(repo);
-        await del('./.git/**');
+        await del('.git');
         return execFile('git', ['init']);
     });
     describe('hook', () => {
@@ -60,7 +69,149 @@ describe('git', () => {
             assert(hook.includes('merkel prepare-commit-msg'));
         });
     });
+    describe('getNewCommits', () => {
+        it('should get correct count of commits', async () => {
+            for (let i = 0; i < 3; i++) {
+                await fs.appendFile('test.txt', `${i}\n`);
+                await execFile('git', ['add', '.']);
+                await execFile('git', ['commit', '-m', `${i}`]);
+            }
+            const commitSequence = await getNewCommits();
+            assert.equal(commitSequence.commits.length, 3);
+
+            let i = 0;
+            for (const commit of commitSequence.commits) {
+                assert.equal(commit.message, `${i++}`);
+            }
+        });
+        it('should return correct count since a given commit', async () => {
+            let since: Commit;
+            for (let i = 0; i < 4; i++) {
+                await fs.appendFile('test.txt', `${i}\n`);
+                await execFile('git', ['add', '.']);
+                await execFile('git', ['commit', '-m', `${i}`]);
+                if (i === 2) {
+                    since = await getHead();
+                }
+            }
+            const commitSequence = await getNewCommits(since);
+            assert.equal(commitSequence.commits.length, 1);
+            assert.equal(commitSequence.commits[0].message, '3');
+        });
+        it('should return 0 without any commits', async () => {
+            const commitSequence = await getNewCommits();
+            assert.equal(commitSequence.commits.length, 0);
+        });
+    });
+    describe('getHead', () => {
+        it('should get the correct head when a head is present', async () => {
+            for (let i = 0; i < 2; i++) {
+                await fs.appendFile('test.txt', `${i}\n`);
+                await execFile('git', ['add', '.']);
+                await execFile('git', ['commit', '-m', `${i}`]);
+            }
+            const commit = await getHead();
+            assert.equal(typeof commit.sha1, 'string');
+        });
+        it('should get error when no HEAD exists', async () => {
+            try {
+                await getHead();
+                assert.fail();
+            } catch (err) {
+                if (!(err instanceof NoCommitsError)) {
+                    throw err;
+                }
+            }
+        });
+    });
+    describe('isRevertCommit', () => {
+        it('should find revert commits', async () => {
+            await fs.appendFile('test.txt', 'A');
+            await execFile('git', ['add', '.']);
+            await execFile('git', ['commit', '-m', 'Msg']);
+            await execFile('git', ['revert', 'HEAD']);
+            const commitSequence = await getNewCommits();
+            assert(isRevertCommit(commitSequence.commits[1].message));
+        });
+        it('should just find revert commits', async () => {
+            await fs.appendFile('test.txt', 'A');
+            await execFile('git', ['add', '.']);
+            await execFile('git', ['commit', '-m', 'Msg']);
+            const commitSequence = await getNewCommits();
+            assert(!isRevertCommit(commitSequence.commits[0].message));
+        });
+    });
+    describe('parseGitLog', () => {
+        it('should return empty array on empty log', () => {
+            assert.deepEqual(parseGitLog(''), []);
+        });
+        it('should parse hash, message and merkel tasks', async () => {
+            const commits = parseGitLog(await fs.readFile(path.resolve(path.join(__dirname, '../../src/test/git_log_output.txt')), 'utf8'));
+            for (const commit of commits) {
+                for (const task of commit.tasks) {
+                    delete task.commit;
+                }
+            }
+            assert.deepEqual(commits, [
+                {
+                    sha1: 'c3555604ddfc24022508c5e1f9398c81f3b9b6fa',
+                    message: 'Revert changes to user model\n\nThis reverts commit b9fb8f15176d958d42dba4f14e35f1bf71ec0be9\nand 900931208ae7dabfd9ede49a78d4a961aa8043ba.',
+                    tasks: [
+                        {
+                            type: 'down',
+                            migration: {
+                                name: 'd9271b98-1a2e-445f-8363-783b2bee0ef0'
+                            }
+                        },
+                        {
+                            type: 'down',
+                            migration: {
+                                name: '694b8b6c-3aaa-4e4d-8d54-76515ba90617'
+                            }
+                        }
+                    ]
+                },
+                {
+                    sha1: 'b9fb8f15176d958d42dba4f14e35f1bf71ec0be9',
+                    message: 'Change the User model',
+                    tasks: [
+                        {
+                            type: 'up',
+                            migration: {
+                                name: '694b8b6c-3aaa-4e4d-8d54-76515ba90617'
+                            }
+                        },
+                        {
+                            type: 'up',
+                            migration: {
+                                name: 'd9271b98-1a2e-445f-8363-783b2bee0ef0'
+                            }
+                        }
+                    ]
+                },
+                {
+                    sha1: '900931208ae7dabfd9ede49a78d4a961aa8043ba',
+                    message: 'Initial Commit',
+                    tasks: []
+                }
+            ]);
+        });
+    });
+    describe('getTasksForNewCommit', () => {
+        it('should find new migrations', async () => {
+            await addGitHook();
+            await fs.mkdir('migrations');
+            await fs.appendFile('migrations/text.txt', 'ABC');
+            await execFile('git', ['add', '.']);
+            const tasks = await getTasksForNewCommit('migrations');
+            assert.deepEqual(tasks, [
+                {
+
+                }
+            ]);
+        });
+    });
     after(() => {
-        return del('./.git/**');
+        return del('.git');
     });
 });

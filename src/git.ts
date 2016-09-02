@@ -6,6 +6,12 @@ import * as fs from 'mz/fs';
 import {Migration, TaskType, Task, TaskList} from './migration';
 import {resolve, basename} from 'path';
 
+export class HookAlreadyFoundError extends Error {
+}
+
+export class NoCommitsError extends Error {
+}
+
 export class CommitSequence {
     constructor(public commits: Commit[], public isReversed = false) {}
 }
@@ -50,11 +56,23 @@ export class Commit {
     }
 }
 
+async function hasHead(): Promise<Boolean> {
+    try {
+        await execFile('git', ['show', 'HEAD']);
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
+
 /**
  * Gets all commits in the migration dir since the last migration head
  * @param from The commit sha1 of the commit when the last migration was running
  */
 export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
+    if (!(await hasHead())) {
+        return new CommitSequence([], false);
+    }
     // check if the HEAD is behind the last migration
     let headBehindLastMigration = false;
     if (since) {
@@ -87,20 +105,19 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     return new CommitSequence(parseGitLog(output), headBehindLastMigration);
 }
 
-export async function addGitHook(): Promise<void> {
+export async function addGitHook(): Promise<['appended' | 'created', string]> {
     const hookPath = path.normalize('.git/hooks/prepare-commit-msg');
     const hook = '\nnode_modules/.bin/merkel prepare-commit-msg $1 $2 $3\n';
     try {
         const content = await fs.readFile(hookPath, 'utf8');
         if (content.indexOf(hook.substring(1, hook.length - 1)) !== -1) {
-            process.stdout.write('Hook already found\n');
-            process.exit(0);
+            throw new HookAlreadyFoundError();
         }
         await fs.appendFile(hookPath, hook);
-        process.stdout.write(`Appended hook to ${chalk.cyan(hookPath)}\n`);
+        return ['appended', hookPath] as ['appended', string];
     } catch (err) {
         await fs.writeFile(hookPath, '#!/bin/sh\n' + hook);
-        process.stdout.write(`Created ${chalk.cyan(hookPath)}\n`);
+        return ['created', hookPath] as ['created', string];
     }
 }
 
@@ -114,6 +131,7 @@ export function parseGitLog(gitLog: string): Commit[] {
     const commitStrings = gitLog.substr('>>>>COMMIT\n'.length).split('>>>>COMMIT\n');
     const commits = commitStrings.map(s => {
         let [, sha1, message] = s.match(/^(\w+)\n((?:.|\n|\r)*)$/);
+        message = message.trim();
         const commit = new Commit({ sha1 });
         // get commands from message
         const regExp = /\[\s*merkel[^\]]*\s*\]/g;
@@ -126,7 +144,7 @@ export function parseGitLog(gitLog: string): Commit[] {
             }
         }
         // strip commands from message
-        commit.message = message.replace(regExp, '');
+        commit.message = message.replace(regExp, '').trim();
         return commit;
     });
     return commits;
@@ -136,15 +154,19 @@ export function parseGitLog(gitLog: string): Commit[] {
  * Gets the SHA1 of the current git HEAD
  */
 export async function getHead(): Promise<Commit> {
-    const [stdout] = await execFile('git', ['rev-parse', 'HEAD']);
-    return new Commit({ sha1: stdout.toString().trim() });
+    try {
+        const [stdout] = await execFile('git', ['rev-parse', 'HEAD']);
+        return new Commit({ sha1: stdout.toString().trim() });
+    } catch (err) {
+        throw new NoCommitsError();
+    }
 }
 
-export async function getTasksForNewCommit(message: string, migrationDir: string): Promise<TaskList> {
+export async function getTasksForNewCommit(migrationDir: string): Promise<TaskList> {
     migrationDir = resolve(migrationDir);
     const [stdout] = await execFile('git', ['diff', '--staged', '--name-status']);
     const output = stdout.toString().trim();
-    const tasks: TaskList = new TaskList();
+    const tasks = new TaskList();
     // added migration files should be executed up
     for (const line of output.split('\n')) {
         const status = line.charAt(0);

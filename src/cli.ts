@@ -12,7 +12,7 @@ import * as inquirer from 'inquirer';
 import {parse} from 'url';
 import {PostgresAdapter} from './adapters/postgres';
 import {DbAdapter} from './adapter';
-import {addGitHook} from './git';
+import {addGitHook, HookAlreadyFoundError} from './git';
 const pkg = require('../package.json');
 require('update-notifier')({ pkg }).notify();
 
@@ -130,7 +130,23 @@ yargs.command(
             }
             // add git hook
             if (shouldAddGitHook) {
-                await addGitHook();
+                try {
+                    const [type, hookPath] = await addGitHook();
+                    switch (type) {
+                        case 'appended':
+                            process.stdout.write(`Appended hook to ${chalk.cyan(hookPath)}\n`);
+                            break;
+                        case 'created':
+                            process.stdout.write(`Created ${chalk.cyan(hookPath)}\n`);
+                    }
+                } catch (err) {
+                    if (err instanceof HookAlreadyFoundError) {
+                        process.stdout.write('Hook already found\n');
+                        process.exit(0);
+                    } else {
+                        throw err;
+                    }
+                }
             }
             process.exit(0);
         } catch (err) {
