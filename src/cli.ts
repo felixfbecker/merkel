@@ -4,7 +4,7 @@ import * as fs from 'mz/fs';
 import * as chalk from 'chalk';
 import {getNewCommits, Commit, getHead, getTasksForNewCommit, isRevertCommit} from './git';
 import {TaskType} from './migration';
-import {migrate} from '../index';
+import {migrate, generate} from '../index';
 import * as uuid from 'node-uuid';
 import mkdirp = require('mkdirp');
 import * as path from 'path';
@@ -376,65 +376,8 @@ yargs.command('generate', 'Generates a new migration file', {
     try {
         const name = argv.name || uuid.v1();
         const migrationDir = path.resolve(argv.migrationDir);
-        let template: string;
-        let ext: string = '';
-        if (argv.template) {
-            try {
-                template = await fs.readFile(argv.template, 'utf8');
-            } catch (err) {
-                if (err.code !== 'ENOENT') {
-                    throw err;
-                }
-                process.stderr.write(chalk.red('\nCould not find template ' + argv.template + '\n'));
-            }
-        } else {
-            // detect tsconfig.json
-            try {
-                const tsconfig = JSON.parse(await fs.readFile('tsconfig.json', 'utf8'));
-                const targetLessThanEs6 = tsconfig.compilerOptions && /^es[35]$/i.test(tsconfig.compilerOptions.target);
-                ext = '.ts';
-                template = [
-                    '',
-                    `export ${targetLessThanEs6 ? '' : 'async '}function up(): Promise<void> {`,
-                    '',
-                    '}',
-                    '',
-                    `export ${targetLessThanEs6 ? '' : 'async '}function down(): Promise<void> {`,
-                    '',
-                    '}',
-                    ''
-                ].join('\n');
-            } catch (err) {
-                if (err.code !== 'ENOENT') {
-                    throw err;
-                }
-                ext = '.js';
-                template = [
-                    '',
-                    'exports.up = function up() {',
-                    '',
-                    '};',
-                    '',
-                    'exports.down = function down() {',
-                    '',
-                    '};',
-                    ''
-                ].join('\n');
-            }
-        }
-        const file = `${migrationDir}/${name}${ext}`;
-        const relativePath = path.relative(process.cwd(), migrationDir);
-        // check if already exists
-        try {
-            await fs.access(file);
-            process.stderr.write(chalk.red('\nError: Migration file ' + relativePath + path.sep + chalk.bold(name) + ext + ' already exists\n'));
-            process.exit(1);
-        } catch (err) {
-            // continue
-        }
-        await new Promise((resolve, reject) => mkdirp(migrationDir, err => err ? reject(err) : resolve()));
-        await fs.writeFile(file, template);
-        process.stdout.write('\nCreated ' + chalk.cyan(relativePath + path.sep + name + ext) + '\n');
+        generate({name: name, migrationDir: migrationDir, template: argv.template},
+        {log: process.stdout.write, error: process.stderr.write});
         process.exit(0);
     } catch (err) {
         process.stderr.write(chalk.red(err.stack));
