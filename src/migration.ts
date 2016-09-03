@@ -60,11 +60,11 @@ export class TaskList extends Array<Task> {
             const downTasks = this.filter(task => task.type === 'down');
             let upCommand = '[merkel up ' + upTasks.map(task => task.migration.name).join(' ') + ']\n';
             if (upCommand.length > 72) {
-                upCommand = '[\n  merkel up\n  ' + upTasks.map(task => task.migration.name).join('\n  ') + ']\n';
+                upCommand = '[\n  merkel up\n  ' + upTasks.map(task => task.migration.name).join('\n  ') + '\n]\n';
             }
             let downCommand = '[merkel down ' + downTasks.map(task => task.migration.name).join(' ') + ']';
             if (downCommand.length > 72) {
-                downCommand = '[\n  merkel down\n' + downTasks.map(task => task.migration.name).join('\n  ') + ']\n';
+                downCommand = '[\n  merkel down\n' + downTasks.map(task => task.migration.name).join('\n  ') + '\n]\n';
             }
             str += upCommand + downCommand;
         }

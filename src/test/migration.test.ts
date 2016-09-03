@@ -22,8 +22,31 @@ describe('migration', () => {
         });
     });
     describe('TaskList', () => {
-        it('should create the merkel syntax for git commit messages', async () => {
-
+        describe('toString()', () => {
+            it('should return a string of merkel commands', async () => {
+                const taskList = TaskList.from([
+                    new Task({type: 'down', migration: new Migration({name: 'a4bdf4cc-f7ed-4785-8bdb-2abfb5ed2025'})}),
+                    new Task({type: 'up', migration: new Migration({name: 'e55d537d-ad67-40e6-9ef1-50320e530676'})})
+                ]);
+                assert.equal(taskList.toString(), '[merkel up e55d537d-ad67-40e6-9ef1-50320e530676]\n[merkel down a4bdf4cc-f7ed-4785-8bdb-2abfb5ed2025]');
+            });
+            it('should wrap long commands', async () => {
+                const taskList = TaskList.from([
+                    new Task({type: 'down', migration: new Migration({name: 'a4bdf4cc-f7ed-4785-8bdb-2abfb5ed2025'})}),
+                    new Task({type: 'up', migration: new Migration({name: 'e55d537d-ad67-40e6-9ef1-50320e530676'})}),
+                    new Task({type: 'up', migration: new Migration({name: '15ca72e9-241c-4fcd-97ad-aeb367403a27'})}),
+                    new Task({type: 'up', migration: new Migration({name: 'e55d537d-ad67-40e6-9ef1-50320e530676'})})
+                ]);
+                assert.equal(taskList.toString(), [
+                    '[',
+                    '  merkel up',
+                    '  e55d537d-ad67-40e6-9ef1-50320e530676',
+                    '  15ca72e9-241c-4fcd-97ad-aeb367403a27',
+                    '  e55d537d-ad67-40e6-9ef1-50320e530676',
+                    ']',
+                    '[merkel down a4bdf4cc-f7ed-4785-8bdb-2abfb5ed2025]'
+                ].join('\n'));
+            });
         });
     });
 });
