@@ -80,9 +80,9 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     let headBehindLastMigration = false;
     if (since) {
         try {
-            await execFile('git', ['merge-base', '--is-ancestor', 'HEAD', since.sha1]);
-            headBehindLastMigration = false;
+            await execFile('git', ['merge-base', '--is-ancestor', since.sha1, 'HEAD']);
         } catch (err) {
+            /* istanbul ignore next */
             if (err.code !== 1) {
                 throw err;
             }
@@ -91,7 +91,7 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     }
     const args = ['log', '--reverse', '--format=>>>>COMMIT%n%H%n%B'];
     if (since) {
-        args.push(since.sha1 + '..HEAD');
+        args.push(headBehindLastMigration ? 'HEAD..' + since.sha1 : since.sha1 + '..HEAD');
     }
     let stdout: Buffer;
     try {

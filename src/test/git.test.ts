@@ -14,17 +14,20 @@ import * as assert from 'assert';
 import * as fs from 'mz/fs';
 import * as path from 'path';
 import * as del from 'del';
-const tmpdir = require('os-tmpdir')();
-const repo = path.join(tmpdir, 'merkel_test_repo');
+import {tmpdir} from 'os';
+const repo = path.join(tmpdir(), 'merkel_test_repo');
+console.log(repo);
 
 describe('git', () => {
     beforeEach(async () => {
-        if (!(await fs.exists(repo))) {
+        try {
+            await fs.access(repo);
+        } catch (err) {
             await fs.mkdir(repo);
         }
         process.chdir(repo);
-        await del('.git');
-        return execFile('git', ['init']);
+        await del('*', <any>{dot: true});
+        await execFile('git', ['init']);
     });
     describe('hook', () => {
         it('should add githook', async () => {
@@ -34,7 +37,7 @@ describe('git', () => {
         });
     });
     describe('getNewCommits', () => {
-        it('should get correct count of commits', async () => {
+        it('should return all new commits', async () => {
             for (let i = 0; i < 3; i++) {
                 await fs.appendFile('test.txt', `${i}\n`);
                 await execFile('git', ['add', '.']);
@@ -42,29 +45,50 @@ describe('git', () => {
             }
             const commitSequence = await getNewCommits();
             assert.equal(commitSequence.length, 3);
-
-            let i = 0;
-            for (const commit of commitSequence) {
-                assert.equal(commit.message, `${i++}`);
-            }
+            assert.equal(commitSequence.isReversed, false);
+            assert.equal(commitSequence[0].message, '0');
+            assert.equal(commitSequence[1].message, '1');
+            assert.equal(commitSequence[2].message, '2');
         });
-        it('should return correct count since a given commit', async () => {
+        it('should return all new commits since a given commit', async () => {
             let since: Commit;
             for (let i = 0; i < 4; i++) {
                 await fs.appendFile('test.txt', `${i}\n`);
                 await execFile('git', ['add', '.']);
                 await execFile('git', ['commit', '-m', `${i}`]);
-                if (i === 2) {
+                if (i === 1) {
                     since = await getHead();
                 }
             }
             const commitSequence = await getNewCommits(since);
-            assert.equal(commitSequence.length, 1);
-            assert.equal(commitSequence[0].message, '3');
+            assert.equal(commitSequence.isReversed, false);
+            assert.equal(commitSequence.length, 2);
+            assert.equal(commitSequence[0].message, '2');
+            assert.equal(commitSequence[1].message, '3');
         });
         it('should return 0 without any commits', async () => {
             const commitSequence = await getNewCommits();
             assert.equal(commitSequence.length, 0);
+            assert.equal(commitSequence.isReversed, false);
+        });
+        describe('when HEAD is behind since', () => {
+            it('should return all commits between HEAD and since in reverse', async () => {
+                let since: Commit;
+                for (let i = 0; i < 4; i++) {
+                    await fs.appendFile('test.txt', `${i}\n`);
+                    await execFile('git', ['add', '.']);
+                    await execFile('git', ['commit', '-m', i + '']);
+                    if (i === 3) {
+                        since = await getHead();
+                    }
+                }
+                await execFile('git', ['checkout', 'HEAD^^']);
+                const commitSequence = await getNewCommits(since);
+                assert.equal(commitSequence.isReversed, true);
+                assert.equal(commitSequence.length, 2);
+                assert.equal(commitSequence[0].message, '2');
+                assert.equal(commitSequence[1].message, '3');
+            });
         });
     });
     describe('getHead', () => {
