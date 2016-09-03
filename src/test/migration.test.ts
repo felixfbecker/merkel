@@ -8,7 +8,7 @@ describe('migration', () => {
         it('should calculate the right path', async () => {
             await fs.appendFile(path.join('migrations', 'test.js'), 'up');
             const migration = new Migration({name: 'test'});
-            assert.equal(await migration.getPath('migrations'), path.resolve(path.join(process.cwd(), 'migrations/test.js')));
+            assert.equal(await migration.getPath('migrations'), path.resolve('migrations/test.js'));
         });
         it('should throw MigrationNotFoundError for not found migrations', async () => {
             const migration = new Migration();

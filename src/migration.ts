@@ -41,7 +41,7 @@ export class Migration {
         if (files.length === 0) {
             throw new MigrationNotFoundError(this, migrationDir);
         }
-        return files[0];
+        return resolve(files[0]);
     }
 }
 
