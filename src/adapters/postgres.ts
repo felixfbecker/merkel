@@ -2,7 +2,11 @@
 import * as pg from 'pg';
 import {SQL} from 'sql-template-strings';
 import {DbAdapter} from '../adapter';
-import {Task} from '../migration';
+import {
+    Task,
+    MigrationRunTwiceError,
+    FirstDownMigrationError
+} from '../migration';
 
 export class PostgresAdapter extends DbAdapter {
 
@@ -27,6 +31,7 @@ export class PostgresAdapter extends DbAdapter {
         try {
             await this.client.query(`CREATE TYPE "merkel_migration_type" AS ENUM ('up', 'down')`);
         } catch (err) {
+            /* istanbul ignore next */
             if (~~err.code !== 42710) { // duplicate object
                 throw err;
             }
@@ -90,13 +95,13 @@ export class PostgresAdapter extends DbAdapter {
         `);
         if (task.type === 'up') {
             if (rows.length > 0 && rows[0]['type'] === 'up') {
-                throw new Error('Tried to run the same migration up twice');
+                throw new MigrationRunTwiceError(task.migration, 'up');
             }
         } else if (task.type === 'down') {
             if (rows.length === 0) {
-                throw new Error('The first migration cannot be a down migration');
+                throw new FirstDownMigrationError(task.migration);
             } else if (rows[0]['type'] === 'down') {
-                throw new Error('Tried to run the same migration down twice');
+                throw new MigrationRunTwiceError(task.migration, 'down');
             }
         }
     }

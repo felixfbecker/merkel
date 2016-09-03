@@ -203,7 +203,7 @@ yargs.command(
                 process.stderr.write(chalk.bgYellow('WARNING: mirations have been removed by a git revert'));
             }
             // add commands
-            const taskList = await getTasksForNewCommit(msg, argv.migrationDir);
+            const taskList = await getTasksForNewCommit(argv.migrationDir);
             msg += taskList.toString(true);
             process.exit(0);
         } catch (err) {

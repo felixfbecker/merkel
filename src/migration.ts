@@ -7,6 +7,16 @@ import glob = require('globby');
 
 export type TaskType = 'up' | 'down';
 
+export class FirstDownMigrationError extends Error {
+    constructor(public migration: Migration) {
+        super(`The first migration cannot be a down migration (${migration.name})`);
+    }
+}
+export class MigrationRunTwiceError extends Error {
+    constructor(public migration: Migration, public type: 'up' | 'down') {
+        super(`Tried to run the same migration (${migration.name}) ${type} twice`);
+    }
+}
 export class MigrationNotFoundError extends Error {
     constructor(public migration: Migration, public migrationDir: string) {
         super('Migration file ' + migrationDir + sep + chalk.bold(migration.name) + '.js does not exist');
@@ -36,7 +46,7 @@ export class Migration {
      * @param migrationDir The migration directory
      */
     public async getPath(migrationDir: string): Promise<string> {
-        const basePath = resolve(migrationDir, this.name ? this.name : '');
+        const basePath = resolve(migrationDir, this.name || '');
         const files = await glob(basePath + '*.*');
         if (files.length === 0) {
             throw new MigrationNotFoundError(this, migrationDir);
