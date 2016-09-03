@@ -49,4 +49,14 @@ describe('migration', () => {
             });
         });
     });
+    describe('Task', () => {
+        describe('invert()', () => {
+            it('should return a new tasklist that is the inverse of the task', () => {
+                const task = new Task({type: 'up'});
+                const inverted = task.invert();
+                assert.notEqual(task, inverted);
+                assert.equal(inverted.type, 'down');
+            });
+        });
+    });
 });
