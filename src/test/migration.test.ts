@@ -5,7 +5,6 @@ import * as pg from 'pg';
 import {Migration, MigrationNotFoundError, Task, TaskList} from '../migration';
 import {Commit} from '../git';
 import {PostgresAdapter} from '../adapters/postgres';
-import {tmpdir} from 'os';
 
 describe('migration', () => {
     describe('Migration', () => {
