@@ -1,52 +1,47 @@
-import {PostgresAdapter} from '../adapters/postgres';
+import {PostgresAdapter} from '../../adapters/postgres';
 import {
     Migration,
     Task,
     MigrationRunTwiceError,
     FirstDownMigrationError
-} from '../migration';
-import {Commit} from '../git';
+} from '../../migration';
+import {Commit} from '../../git';
 import * as pg from 'pg';
 import * as assert from 'assert';
 
 describe('PostgresAdapter', () => {
-    beforeEach(async () => {
-        const client = new pg.Client(process.env.DB_CONN);
+    let client: pg.Client;
+    before(async () => {
+        client = new pg.Client(process.env.MERKEL_DB);
         await new Promise<void>((resolve, reject) => client.connect(err => err ? reject(err) : resolve()));
+    });
+    after(() => client.end());
+    beforeEach(async () => {
         await client.query('DROP TABLE IF EXISTS "merkel_meta"');
         await client.query('DROP TYPE IF EXISTS "merkel_migration_type"');
-        client.end();
     });
     describe('init', () => {
         it('should create the database schema', async () => {
-            const adapter = new PostgresAdapter(process.env.DB_CONN, pg);
+            const adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
             await adapter.init();
-            const client = new pg.Client(process.env.DB_CONN);
+            const client = new pg.Client(process.env.MERKEL_DB);
             await new Promise<void>((resolve, reject) => client.connect(err => err ? reject(err) : resolve()));
-            try {
-                await client.query('CREATE TYPE "merkel_migration_type" AS ENUM (\'up\', \'down\')');
-                throw new assert.AssertionError({
-                    message: 'merkel_migration_type does not exist'
-                });
-            } catch (err) {
-                assert.equal(err.code, 42710);
-                // is existent
-            }
-            try {
-                await client.query('CREATE TABLE "merkel_meta" ("test" INTEGER)');
-                throw new assert.AssertionError({
-                    message: 'table merkel_meta does not exist'
-                });
-            } catch (err) {
-                // ignore
-            }
+            const {rows} = await client.query(`SELECT column_name, data_type FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'merkel_meta'`);
+            assert.deepEqual(rows, [
+                { column_name: 'id', data_type: 'integer' },
+                { column_name: 'name', data_type: 'text' },
+                { column_name: 'type', data_type: 'USER-DEFINED' },
+                { column_name: 'commit', data_type: 'text' },
+                { column_name: 'head', data_type: 'text' },
+                { column_name: 'applied_at', data_type: 'timestamp with time zone' }
+            ]);
             client.end();
         });
 
     });
     describe('logMigrationTask', () => {
         it('should log migrations correctly', async () => {
-            const adapter = new PostgresAdapter(process.env.DB_CONN, pg);
+            const adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
             await adapter.init();
             const date = new Date(Date.now());
             const task = new Task({
@@ -69,7 +64,7 @@ describe('PostgresAdapter', () => {
     });
     describe('getLastMigrationTask', () => {
         it('should get the latest migration task', async () => {
-            const adapter = new PostgresAdapter(process.env.DB_CONN, pg);
+            const adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
             await adapter.init();
             const date = new Date(Date.now());
             adapter.logMigrationTask(new Task({
@@ -81,7 +76,7 @@ describe('PostgresAdapter', () => {
                 head: new Commit({
                     sha1: '234'
                 }),
-                migration: new Migration({name: 'test'})
+                migration: new Migration({ name: 'test' })
             }));
             const task = await adapter.getLastMigrationTask();
             assert.deepEqual(task, {
@@ -104,7 +99,7 @@ describe('PostgresAdapter', () => {
     });
     describe('checkIfTaskCanExecute', async () => {
         it('should not run the same migration up twice', async () => {
-            const adapter = new PostgresAdapter(process.env.DB_CONN, pg);
+            const adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
             await adapter.init();
             const upTask = new Task({
                 appliedAt: new Date(Date.now()),
@@ -132,7 +127,7 @@ describe('PostgresAdapter', () => {
             }
         });
         it('should not run the same migration down twice', async () => {
-            const adapter = new PostgresAdapter(process.env.DB_CONN, pg);
+            const adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
             await adapter.init();
             const downTask = new Task({
                 appliedAt: new Date(Date.now()),
@@ -160,7 +155,7 @@ describe('PostgresAdapter', () => {
             }
         });
         it('should not run a down migration first', async () => {
-            const adapter = new PostgresAdapter(process.env.DB_CONN, pg);
+            const adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
             await adapter.init();
             const task = new Task({
                 appliedAt: new Date(Date.now()),

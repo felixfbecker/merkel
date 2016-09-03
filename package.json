@@ -18,14 +18,13 @@
     "clean": "rimraf dist",
     "lint": "tslint -c tsconfig.json \"src/**/*.ts\"",
     "typedoc": "typedoc --module es2015 --target es2015 --mode modules --readme none --out typedoc src typings/index.d.ts",
-    "test": "mocha dist/test --require source-map-support/register",
-    "cover": "nyc --require source-map-support/register mocha dist/test"
+    "test": "mocha dist/test/**/*.test.js --require source-map-support/register",
+    "cover": "nyc --require source-map-support/register mocha dist/test/**/*.test.js"
   },
   "author": "Felix Becker <felix.b@outlook.com>",
   "license": "ISC",
   "dependencies": {
     "chalk": "^1.1.3",
-    "globby": "^6.0.0",
     "inquirer": "^1.1.2",
     "lodash": "^4.15.0",
     "mkdirp": "^0.5.1",

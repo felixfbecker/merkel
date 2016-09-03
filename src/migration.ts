@@ -3,7 +3,7 @@ import * as chalk from 'chalk';
 import {resolve, sep} from 'path';
 import {DbAdapter} from './adapter';
 import {Commit} from './git';
-import glob = require('globby');
+import * as fs from 'mz/fs';
 
 export type TaskType = 'up' | 'down';
 
@@ -46,12 +46,13 @@ export class Migration {
      * @param migrationDir The migration directory
      */
     public async getPath(migrationDir: string): Promise<string> {
-        const basePath = resolve(migrationDir, this.name || '');
-        const files = await glob(basePath + '*.*');
-        if (files.length === 0) {
+        const file = resolve(migrationDir, (this.name || '') + '.js');
+        try {
+            await fs.access(file);
+            return file;
+        } catch (err) {
             throw new MigrationNotFoundError(this, migrationDir);
         }
-        return resolve(files[0]);
     }
 }
 
