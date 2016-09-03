@@ -4,4 +4,4 @@ dist/
 typedoc/
 .vscode/
 coverage/
-.nyc-output/
+.nyc_output/
