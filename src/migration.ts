@@ -56,19 +56,16 @@ export class TaskList extends Array<Task> {
             if (withComment) {
                 str += '# Merkel migrations that need to run after checking out this commit:\n';
             }
-            const upTasks = this.filter(task => task.type === 'up');
-            const downTasks = this.filter(task => task.type === 'down');
-            let upCommand = '[merkel up ' + upTasks.map(task => task.migration.name).join(' ') + ']\n';
-            if (upCommand.length > 72) {
-                upCommand = '[\n  merkel up\n  ' + upTasks.map(task => task.migration.name).join('\n  ') + '\n]\n';
+            for (const type of ['up', 'down']) {
+                const tasks = this.filter(task => task.type === type);
+                let command = `[merkel ${type} ${tasks.map(task => task.migration.name).join(' ')}]\n`;
+                if (command.length > 72) {
+                    command = `[\n  merkel ${type}\n  ${tasks.map(task => task.migration.name).join('\n  ')}\n]\n`;
+                }
+                str += command;
             }
-            let downCommand = '[merkel down ' + downTasks.map(task => task.migration.name).join(' ') + ']';
-            if (downCommand.length > 72) {
-                downCommand = '[\n  merkel down\n' + downTasks.map(task => task.migration.name).join('\n  ') + '\n]\n';
-            }
-            str += upCommand + downCommand;
         }
-        return str;
+        return str.trim();
     }
 
     public async execute(migrationDir: string, adapter: DbAdapter, head: Commit, commit?: Commit): Promise<void> {
