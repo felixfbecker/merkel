@@ -9,21 +9,10 @@ import mkdirp = require('mkdirp');
 import * as path from 'path';
 import * as tty from 'tty';
 import * as inquirer from 'inquirer';
-import {parse} from 'url';
-import {PostgresAdapter} from './adapters/postgres';
 import {DbAdapter} from './adapter';
 import {addGitHook, HookAlreadyFoundError} from './git';
 const pkg = require('../package.json');
 require('update-notifier')({ pkg }).notify();
-
-export function getAdapterFromUrl(url: string): DbAdapter {
-    const dialect = parse(url).protocol;
-    switch (dialect) {
-        case 'postgres:': return new PostgresAdapter(url, require(process.cwd() + '/node_modules/pg'));
-        case null: throw new Error('Invalid connection URL ' + url);
-        default: throw new Error('Unssuported dialect ' + dialect);
-    }
-}
 
 interface Config {
     migrationDir?: string;
@@ -126,7 +115,7 @@ yargs.command(
             process.stdout.write(`Created ${chalk.cyan(path.join('.', '.merkelrc.json'))}\n`);
             // init database
             if (initMetaNow) {
-                await getAdapterFromUrl(argv.db).init();
+                await DbAdapter.getFromUrl(argv.db).init();
             }
             // add git hook
             if (shouldAddGitHook) {
@@ -163,9 +152,21 @@ yargs.command(
     async () => {
         try {
             process.stdout.write('\n');
-            await addGitHook();
+            const [type, hookPath] = await addGitHook();
+            switch (type) {
+                case 'appended':
+                    process.stdout.write(`Appended hook to ${chalk.cyan(hookPath)}\n`);
+                    break;
+                case 'created':
+                    process.stdout.write(`Created ${chalk.cyan(hookPath)}\n`);
+            }
             process.exit(0);
         } catch (err) {
+            if (err instanceof HookAlreadyFoundError) {
+                process.stdout.write(chalk.red('Hook already found\n'));
+                process.exit(0);
+                return;
+            }
             process.stderr.write(chalk.red(err.stack));
             process.exit(1);
         }
@@ -267,7 +268,7 @@ yargs.command(
     { db: dbOption },
     async (argv: StatusArgv) => {
         try {
-            const adapter = getAdapterFromUrl(argv.db);
+            const adapter = DbAdapter.getFromUrl(argv.db);
             await adapter.init();
             const head = await getHead();
             await getAndShowStatus(adapter, head, argv.migrationDir);
@@ -299,7 +300,7 @@ yargs.command(
     },
     async (argv: MigrateArgv) => {
         try {
-            const adapter = getAdapterFromUrl(argv.db);
+            const adapter = DbAdapter.getFromUrl(argv.db);
             await adapter.init();
             const head = await getHead();
             const relevantCommits = await getAndShowStatus(adapter, head, argv.migrationDir);
@@ -337,7 +338,7 @@ interface MigrationCommandArgv extends Argv {
 function migrationCommand(type: TaskType) {
     return async (argv: MigrationCommandArgv) => {
         const head = await getHead();
-        const adapter = getAdapterFromUrl(argv.db);
+        const adapter = DbAdapter.getFromUrl(argv.db);
         await adapter.init();
         for (const name of argv.migrations) {
             const task = new Task({
