@@ -6,8 +6,9 @@ import {
     NoCommitsError,
     isRevertCommit,
     parseGitLog,
-    getTasksForNewCommit
- } from '../git';
+    getTasksForNewCommit,
+    CommitSequence
+} from '../git';
 import {execFile} from 'mz/child_process';
 import * as assert from 'assert';
 import * as fs from 'mz/fs';
@@ -106,7 +107,7 @@ describe('git', () => {
     });
     describe('parseGitLog', () => {
         it('should return empty array on empty log', () => {
-            assert.deepEqual(parseGitLog(''), []);
+            assert.deepEqual(parseGitLog(''), new CommitSequence());
         });
         it('should parse hash, message and merkel tasks', async () => {
             const commits = parseGitLog(await fs.readFile(path.resolve(path.join(__dirname, '../../src/test/git_log_output.txt')), 'utf8'));
@@ -115,7 +116,7 @@ describe('git', () => {
                     delete task.commit;
                 }
             }
-            assert.deepEqual(commits, [
+            assert.deepEqual(commits, <CommitSequence>CommitSequence.from([
                 {
                     sha1: 'c3555604ddfc24022508c5e1f9398c81f3b9b6fa',
                     message: 'Revert changes to user model\n\nThis reverts commit b9fb8f15176d958d42dba4f14e35f1bf71ec0be9\nand 900931208ae7dabfd9ede49a78d4a961aa8043ba.',
@@ -157,7 +158,7 @@ describe('git', () => {
                     message: 'Initial Commit',
                     tasks: []
                 }
-            ]);
+            ]));
         });
     });
     describe('getTasksForNewCommit', () => {
