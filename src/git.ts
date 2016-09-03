@@ -12,8 +12,11 @@ export class HookAlreadyFoundError extends Error {
 export class NoCommitsError extends Error {
 }
 
-export class CommitSequence {
-    constructor(public commits: Commit[], public isReversed = false) {}
+export class CommitSequence extends Array<Commit> {
+    /**
+     * Wether the HEAD commit was before the last migration HEAD commit
+     */
+    public isReversed: boolean = false;
 }
 
 export class Commit {
@@ -71,7 +74,7 @@ async function hasHead(): Promise<Boolean> {
  */
 export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     if (!(await hasHead())) {
-        return new CommitSequence([], false);
+        return new CommitSequence();
     }
     // check if the HEAD is behind the last migration
     let headBehindLastMigration = false;
@@ -102,7 +105,9 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
         [stdout] = await execFile('git');
     }
     const output = stdout.toString().trim();
-    return new CommitSequence(parseGitLog(output), headBehindLastMigration);
+    const commits = parseGitLog(output);
+    commits.isReversed = headBehindLastMigration;
+    return commits;
 }
 
 export async function addGitHook(): Promise<['appended' | 'created', string]> {
@@ -124,12 +129,13 @@ export async function addGitHook(): Promise<['appended' | 'created', string]> {
 /**
  * Parses the output of `git log --reverse --format=">>>>COMMIT%n%H%n%B" ${lastMigrationHead}`.
  */
-export function parseGitLog(gitLog: string): Commit[] {
+export function parseGitLog(gitLog: string): CommitSequence {
     if (gitLog === '') {
-        return [];
+        return new CommitSequence();
     }
     const commitStrings = gitLog.substr('>>>>COMMIT\n'.length).split('>>>>COMMIT\n');
-    const commits = commitStrings.map(s => {
+    const commits = new CommitSequence();
+    for (const s of commitStrings) {
         let [, sha1, message] = s.match(/^(\w+)\n((?:.|\n|\r)*)$/);
         message = message.trim();
         const commit = new Commit({ sha1 });
@@ -145,8 +151,8 @@ export function parseGitLog(gitLog: string): Commit[] {
         }
         // strip commands from message
         commit.message = message.replace(regExp, '').trim();
-        return commit;
-    });
+        commits.push(commit);
+    }
     return commits;
 }
 

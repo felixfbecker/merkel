@@ -40,10 +40,10 @@ describe('git', () => {
                 await execFile('git', ['commit', '-m', `${i}`]);
             }
             const commitSequence = await getNewCommits();
-            assert.equal(commitSequence.commits.length, 3);
+            assert.equal(commitSequence.length, 3);
 
             let i = 0;
-            for (const commit of commitSequence.commits) {
+            for (const commit of commitSequence) {
                 assert.equal(commit.message, `${i++}`);
             }
         });
@@ -58,12 +58,12 @@ describe('git', () => {
                 }
             }
             const commitSequence = await getNewCommits(since);
-            assert.equal(commitSequence.commits.length, 1);
-            assert.equal(commitSequence.commits[0].message, '3');
+            assert.equal(commitSequence.length, 1);
+            assert.equal(commitSequence[0].message, '3');
         });
         it('should return 0 without any commits', async () => {
             const commitSequence = await getNewCommits();
-            assert.equal(commitSequence.commits.length, 0);
+            assert.equal(commitSequence.length, 0);
         });
     });
     describe('getHead', () => {
@@ -94,14 +94,14 @@ describe('git', () => {
             await execFile('git', ['commit', '-m', 'Msg']);
             await execFile('git', ['revert', 'HEAD']);
             const commitSequence = await getNewCommits();
-            assert(isRevertCommit(commitSequence.commits[1].message));
+            assert(isRevertCommit(commitSequence[1].message));
         });
         it('should just find revert commits', async () => {
             await fs.appendFile('test.txt', 'A');
             await execFile('git', ['add', '.']);
             await execFile('git', ['commit', '-m', 'Msg']);
             const commitSequence = await getNewCommits();
-            assert(!isRevertCommit(commitSequence.commits[0].message));
+            assert(!isRevertCommit(commitSequence[0].message));
         });
     });
     describe('parseGitLog', () => {

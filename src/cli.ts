@@ -219,7 +219,7 @@ interface StatusArgv extends Argv {
 
 async function getAndShowStatus(adapter: DbAdapter, head: Commit, migrationDir: string): Promise<Commit[]> {
     const lastTask = await adapter.getLastMigrationTask();
-    const {commits, isReversed} = await getNewCommits(lastTask.head);
+    const commits = await getNewCommits(lastTask.head);
     process.stdout.write('\n');
     if (lastTask) {
         await Promise.all([lastTask.commit, lastTask.head].map(async (commit) => {
@@ -240,7 +240,7 @@ async function getAndShowStatus(adapter: DbAdapter, head: Commit, migrationDir: 
     }
     if (head) {
         await head.loadSubject();
-        process.stdout.write(chalk.grey(`                        ${commits.length === 1 ? '‖' : `${isReversed ? '↑' : '↓'} ${commits.length - 1} commit${commits.length > 2 ? 's' : ''}\n`}`));
+        process.stdout.write(chalk.grey(`                        ${commits.length === 1 ? '‖' : `${commits.isReversed ? '↑' : '↓'} ${commits.length - 1} commit${commits.length > 2 ? 's' : ''}\n`}`));
         process.stdout.write(`Current HEAD:        ${head.toString()}\n`);
     }
     process.stdout.write('\n');
@@ -254,7 +254,7 @@ async function getAndShowStatus(adapter: DbAdapter, head: Commit, migrationDir: 
     for (const commit of relevantCommits) {
         process.stdout.write(commit.toString() + '\n');
         for (const task of commit.tasks) {
-            process.stdout.write((isReversed ? task.invert() : task).toString() + '\n');
+            process.stdout.write((commits.isReversed ? task.invert() : task).toString() + '\n');
         }
         process.stdout.write(`\n`);
     }
