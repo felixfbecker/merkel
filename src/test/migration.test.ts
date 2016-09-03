@@ -84,6 +84,9 @@ describe('migration', () => {
                 const {rows} = await client.query(`SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'new_table'`);
                 assert.equal(rows.length, 1);
             });
+            it('should throw a MigrationExecutionError when the migration returns a rejected promise');
+            it('should throw a MigrationExecutionError when the migration throws sync');
+            it('should throw a MigrationExecutionError when the migration would crash the process');
         });
     });
 });
