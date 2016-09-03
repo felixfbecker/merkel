@@ -36,7 +36,7 @@ export class Migration {
      * @param migrationDir The migration directory
      */
     public async getPath(migrationDir: string): Promise<string> {
-        const basePath = resolve(migrationDir, this.name);
+        const basePath = resolve(migrationDir, this.name ? this.name : '');
         const files = await glob(basePath + '*.*');
         if (files.length === 0) {
             throw new MigrationNotFoundError(this, migrationDir);
