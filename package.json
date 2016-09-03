@@ -18,7 +18,7 @@
     "clean": "rimraf dist",
     "lint": "tslint -c tsconfig.json \"src/**/*.ts\"",
     "typedoc": "typedoc --module es2015 --target es2015 --mode modules --readme none --out typedoc src typings/index.d.ts",
-    "test": "istanbul cover node_modules/mocha/bin/_mocha dist/test"
+    "test": "nyc --require source-map-support/register mocha dist/test"
   },
   "author": "Felix Becker <felix.b@outlook.com>",
   "license": "ISC",
@@ -36,13 +36,21 @@
   },
   "devDependencies": {
     "del": "^2.2.2",
-    "istanbul": "^0.4.5",
     "mocha": "^3.0.2",
+    "nyc": "^8.1.0",
     "os-tmpdir": "^1.0.1",
     "pg": "^6.1.0",
     "rimraf": "^2.5.4",
     "source-map-support": "^0.4.2",
     "tslint": "^3.15.1",
     "typescript": "^1.8.10"
+  },
+  "nyc": {
+    "include": [
+      "dist/**/*.js"
+    ],
+    "exclude": [
+      "dist/test/**/*.js"
+    ]
   }
 }
