@@ -120,7 +120,7 @@ describe('migration', () => {
                     }
                 }
             });
-            it.only('should throw a MigrationExecutionError when the migration would crash the process', async () => {
+            it('should throw a MigrationExecutionError when the migration would crash the process', async () => {
                 const task = new Task({type: 'up', migration: new Migration({name: 'error_crash'})});
                 const head = new Commit({sha1: 'HEADCOMMITSHA1'});
                 const trigger = new Commit({sha1: 'TRIGGERCOMMITSHA1'});

@@ -3,7 +3,8 @@ import * as yargs from 'yargs';
 import * as fs from 'mz/fs';
 import * as chalk from 'chalk';
 import {getNewCommits, Commit, getHead, getTasksForNewCommit, isRevertCommit} from './git';
-import {Migration, Task, TaskType} from './migration';
+import {TaskType} from './migration';
+import {migrate} from '../index';
 import * as uuid from 'node-uuid';
 import mkdirp = require('mkdirp');
 import * as path from 'path';
@@ -337,24 +338,15 @@ interface MigrationCommandArgv extends Argv {
 
 function migrationCommand(type: TaskType) {
     return async (argv: MigrationCommandArgv) => {
-        const head = await getHead();
-        const adapter = DbAdapter.getFromUrl(argv.db);
-        await adapter.init();
-        for (const name of argv.migrations) {
-            const task = new Task({
-                type: 'up',
-                migration: new Migration({ name })
+        try {
+            migrate(type, argv.migrationOutDir, argv.db, argv.migrations, {
+                log: process.stdout.write,
+                error: process.stderr.write
             });
-            process.stdout.write('Executing' + task.toString() + '...');
-            try {
-                await task.execute(argv.migrationOutDir, adapter, head);
-                process.stdout.write(' Success\n');
-            } catch (err) {
-                process.stderr.write(chalk.red('\nError: ' + err.stack));
-                process.exit(1);
-            }
+        } catch (err) {
+            process.stderr.write(chalk.red('\nError: ' + err.stack));
+            process.exit(1);
         }
-        process.stdout.write('\n' + chalk.green.bold('Migration successful') + '\n');
         process.exit(0);
     };
 }
