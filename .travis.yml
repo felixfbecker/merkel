@@ -6,6 +6,10 @@ node_js:
 
 sudo: false
 
+env:
+  global:
+   - CODECOV_TOKEN=76be2746-185f-49c1-a302-ed592d765a67
+
 install:
  - npm install
  - typings install
@@ -13,6 +17,9 @@ install:
 script:
  - npm run build
  - npm test
+
+after_success:
+ - 'nyc report --reporter=lcov > coverage.lcov && codecov'
 
 before_deploy:
  - npm run typedoc
