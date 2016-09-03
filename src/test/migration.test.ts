@@ -2,7 +2,13 @@ import * as assert from 'assert';
 import * as fs from 'mz/fs';
 import * as path from 'path';
 import * as pg from 'pg';
-import {Migration, MigrationNotFoundError, Task, TaskList} from '../migration';
+import {
+    Migration,
+    MigrationNotFoundError,
+    MigrationExecutionError,
+    Task,
+    TaskList
+} from '../migration';
 import {Commit} from '../git';
 import {PostgresAdapter} from '../adapters/postgres';
 
@@ -65,7 +71,10 @@ describe('migration', () => {
         });
         describe('execute()', () => {
             let client: pg.Client;
+            let adapter: PostgresAdapter;
             before(async () => {
+                adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
+                await adapter.init();
                 client = new pg.Client(process.env.MERKEL_DB);
                 await new Promise<void>((resolve, reject) => client.connect(err => err ? reject(err) : resolve()));
                 await client.query('DROP TABLE IF EXISTS new_table');
@@ -76,16 +85,61 @@ describe('migration', () => {
                 const task = new Task({type: 'up', migration: new Migration({name: 'test_migration'})});
                 const head = new Commit({sha1: 'HEADCOMMITSHA1'});
                 const trigger = new Commit({sha1: 'TRIGGERCOMMITSHA1'});
-                const adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
-                await adapter.init();
-                await task.execute(__dirname, adapter, head, trigger);
+                await task.execute(__dirname + '/migrations', adapter, head, trigger);
                 // Check if table was created
                 const {rows} = await client.query(`SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'new_table'`);
                 assert.equal(rows.length, 1);
             });
-            it('should throw a MigrationExecutionError when the migration returns a rejected promise');
-            it('should throw a MigrationExecutionError when the migration throws sync');
-            it('should throw a MigrationExecutionError when the migration would crash the process');
+            it('should throw a MigrationExecutionError when the migration returns a rejected promise', async () => {
+                const task = new Task({type: 'up', migration: new Migration({name: 'error_async'})});
+                const head = new Commit({sha1: 'HEADCOMMITSHA1'});
+                const trigger = new Commit({sha1: 'TRIGGERCOMMITSHA1'});
+                try {
+                    await task.execute(__dirname + '/migrations', adapter, head, trigger);
+                    throw new assert.AssertionError({
+                        message: 'No Migration ExecutionError was thrown.'
+                    });
+                } catch (err) {
+                    if (!(err instanceof MigrationExecutionError)) {
+                        throw err;
+                    }
+                }
+            });
+            it('should throw a MigrationExecutionError when the migration throws sync', async () => {
+                const task = new Task({type: 'up', migration: new Migration({name: 'error_sync'})});
+                const head = new Commit({sha1: 'HEADCOMMITSHA1'});
+                const trigger = new Commit({sha1: 'TRIGGERCOMMITSHA1'});
+                try {
+                    await task.execute(__dirname + '/migrations', adapter, head, trigger);
+                    throw new assert.AssertionError({
+                        message: 'No Migration ExecutionError was thrown.'
+                    });
+                } catch (err) {
+                    if (!(err instanceof MigrationExecutionError)) {
+                        throw err;
+                    }
+                }
+            });
+            it.only('should throw a MigrationExecutionError when the migration would crash the process', async () => {
+                const task = new Task({type: 'up', migration: new Migration({name: 'error_crash'})});
+                const head = new Commit({sha1: 'HEADCOMMITSHA1'});
+                const trigger = new Commit({sha1: 'TRIGGERCOMMITSHA1'});
+                let listener: Function;
+                try {
+                    listener = process.listeners('uncaughtException').pop();
+                    process.removeListener('uncaughtException', listener);
+                    await task.execute(__dirname + '/migrations', adapter, head, trigger);
+                    throw new assert.AssertionError({
+                        message: 'No Migration ExecutionError was thrown.'
+                    });
+                } catch (err) {
+                    if (!(err instanceof MigrationExecutionError)) {
+                        throw err;
+                    }
+                } finally {
+                    process.addListener('uncaughtException', listener);
+                }
+            });
         });
     });
 });
