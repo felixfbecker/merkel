@@ -2,9 +2,9 @@
 import * as yargs from 'yargs';
 import * as fs from 'mz/fs';
 import * as chalk from 'chalk';
-import {getNewCommits, Commit, getHead} from './git';
+import {getHead} from './git';
 import {TaskType} from './migration';
-import {migrate, generate, prepareCommitMsg, isMerkelRepository, createConfig, createMigrationDir} from '../index';
+import {getStatus, migrate, generate, prepareCommitMsg, isMerkelRepository, createConfig, createMigrationDir} from './index';
 import * as uuid from 'node-uuid';
 import * as path from 'path';
 import * as tty from 'tty';
@@ -70,7 +70,6 @@ yargs.command(
                 process.stderr.write('.merkelrc.json already exists\n');
                 process.exit(1);
             }
-            const config: Config = {};
             // try to read tsconfig
             let tsconfig: any;
             try {
@@ -107,7 +106,7 @@ yargs.command(
             }
             createConfig({
                 migrationDir: <string>migrationDir,
-                migrationOutDir: <string>migrationOutDir,
+                migrationOutDir: <string>migrationOutDir
             });
             process.stdout.write(`Created ${chalk.cyan(path.join('.', '.merkelrc.json'))}\n`);
             if (initMetaNow) {
@@ -211,50 +210,6 @@ interface StatusArgv extends Argv {
     db: string;
 }
 
-async function getAndShowStatus(adapter: DbAdapter, head: Commit, migrationDir: string): Promise<Commit[]> {
-    const lastTask = await adapter.getLastMigrationTask();
-    const commits = await getNewCommits(lastTask.head);
-    process.stdout.write('\n');
-    if (lastTask) {
-        await Promise.all([lastTask.commit, lastTask.head].map(async (commit) => {
-            try {
-                await commit.loadSubject();
-            } catch (err) {
-                if (err.code !== 128) {
-                    throw err;
-                }
-            }
-        }));
-        process.stdout.write(`Last migration:      ${lastTask.toString()}\n`);
-        process.stdout.write(`Applied at:          ${lastTask.appliedAt}\n`);
-        process.stdout.write(`Triggered by commit: ${lastTask.commit.toString()}\n`);
-        process.stdout.write(`HEAD at execution:   ${lastTask.commit.toString()}\n`);
-    } else {
-        process.stdout.write(`Last migration:      No migration run yet\n`);
-    }
-    if (head) {
-        await head.loadSubject();
-        process.stdout.write(chalk.grey(`                        ${commits.length === 1 ? '‖' : `${commits.isReversed ? '↑' : '↓'} ${commits.length - 1} commit${commits.length > 2 ? 's' : ''}\n`}`));
-        process.stdout.write(`Current HEAD:        ${head.toString()}\n`);
-    }
-    process.stdout.write('\n');
-    const relevantCommits = commits.filter(commit => commit.tasks.length > 0);
-    if (relevantCommits.length === 0) {
-        process.stdout.write('No pending migrations\n');
-        process.exit(0);
-    }
-    const migrationCount = relevantCommits.reduce((prev: number, curr: Commit) => prev + curr.tasks.length, 0);
-    process.stdout.write(chalk.underline(`${migrationCount} pending migration${migrationCount > 1 ? 's' : ''}:\n\n`));
-    for (const commit of relevantCommits) {
-        process.stdout.write(commit.toString() + '\n');
-        for (const task of commit.tasks) {
-            process.stdout.write((commits.isReversed ? task.invert() : task).toString() + '\n');
-        }
-        process.stdout.write(`\n`);
-    }
-    return relevantCommits;
-}
-
 yargs.command(
     'status',
     'Shows the last migration task and new migrations tasks to execute',
@@ -264,8 +219,8 @@ yargs.command(
             const adapter = DbAdapter.getFromUrl(argv.db);
             await adapter.init();
             const head = await getHead();
-            await getAndShowStatus(adapter, head, argv.migrationDir);
-            process.stdout.write(`Run ${chalk.white.bold('merkel migrate')} to execute\n`);
+            await getStatus(adapter, head, argv.migrationDir);
+            process.stdout.write(`\n\nRun ${chalk.white.bold('merkel migrate')} to execute\n`);
             process.exit(0);
         } catch (err) {
             process.stderr.write(chalk.red(err.stack));
@@ -296,7 +251,8 @@ yargs.command(
             const adapter = DbAdapter.getFromUrl(argv.db);
             await adapter.init();
             const head = await getHead();
-            const relevantCommits = await getAndShowStatus(adapter, head, argv.migrationDir);
+            const status = await getStatus(adapter, head, argv.migrationDir);
+            process.stdout.write(status.toString() + '\n\n');
             if (argv.confirm) {
                 const answer = await inquirer.prompt({ type: 'confirm', name: 'continue', message: 'Continue?' });
                 if (!answer['continue']) {
@@ -305,7 +261,7 @@ yargs.command(
                 process.stdout.write('\n');
             }
             process.stdout.write('Starting migration\n\n');
-            for (const commit of relevantCommits) {
+            for (const commit of status.newCommits) {
                 process.stdout.write(`${chalk.yellow(commit.shortSha1)} ${commit.subject}\n`);
                 for (const task of commit.tasks) {
                     process.stdout.write(task.toString() + '...');

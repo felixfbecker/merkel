@@ -1,10 +1,82 @@
-import {TaskType, Task, Migration} from './src/migration';
-import {getHead, isRevertCommit, getTasksForNewCommit} from './src/git';
-import {DbAdapter} from './src/adapter';
+
+import {getNewCommits, Commit, CommitSequence} from './git';
+import {DbAdapter} from './adapter';
+import {TaskType, Task, Migration} from './migration';
+import {getHead, isRevertCommit, getTasksForNewCommit} from './git';
 import * as chalk from 'chalk';
 import * as fs from 'mz/fs';
 import * as path from 'path';
 import mkdirp = require('mkdirp');
+
+export class Status {
+
+    /** The last migration task that was executed, according to the merkel metadata table */
+    public lastTask: Task;
+
+    /** The current HEAD commit of the repository */
+    public head: Commit;
+
+    /** New commits since the last migration */
+    public newCommits: CommitSequence;
+
+    /** Returns a string that can be printed to a CLI */
+    public toString(): string {
+        let str: string;
+        if (this.lastTask) {
+            str += `Last migration:      ${this.lastTask.toString()}\n`;
+            str += `Applied at:          ${this.lastTask.appliedAt}\n`;
+            str += `Triggered by commit: ${this.lastTask.commit.toString()}\n`;
+            str += `HEAD at execution:   ${this.lastTask.commit.toString()}\n`;
+        } else {
+            str += `Last migration:      No migration run yet\n`;
+        }
+        if (this.head) {
+            str += chalk.grey(`                        ${this.newCommits.length === 1 ? '‖' : `${this.newCommits.isReversed ? '↑' : '↓'} ${this.newCommits.length - 1} commit${this.newCommits.length > 2 ? 's' : ''}\n`}`);
+            str += `Current HEAD:        ${this.head.toString()}\n`;
+        }
+        str += '\n';
+        const relevantCommits = this.newCommits.filter(commit => commit.tasks.length > 0);
+        if (relevantCommits.length === 0) {
+            str += 'No pending migrations\n';
+            return;
+        }
+        const migrationCount = relevantCommits.reduce((prev: number, curr: Commit) => prev + curr.tasks.length, 0);
+        str += chalk.underline(`${migrationCount} pending migration${migrationCount > 1 ? 's' : ''}:\n\n`);
+        for (const commit of relevantCommits) {
+            str += commit.toString() + '\n';
+            for (const task of commit.tasks) {
+                str += (this.newCommits.isReversed ? task.invert() : task).toString() + '\n';
+            }
+            str += `\n`;
+        }
+        return str;
+    }
+}
+
+export async function getStatus(adapter: DbAdapter, head: Commit, migrationDir: string): Promise<Status> {
+    const status = new Status();
+    status.lastTask = await adapter.getLastMigrationTask();
+    status.newCommits = await getNewCommits(status.lastTask.head);
+    status.head = head;
+    if (status.lastTask) {
+        // Load commit messages
+        await Promise.all([status.lastTask.commit, status.lastTask.head].map(async (commit) => {
+            try {
+                await commit.loadSubject();
+            } catch (err) {
+                /* istanbul ignore next */
+                if (err.code !== 128) {
+                    throw err;
+                }
+            }
+        }));
+    }
+    if (head) {
+        await head.loadSubject();
+    }
+    return status;
+}
+
 
 export interface Logger {
     log(msg: string): void;
@@ -126,3 +198,4 @@ export async function generate(options: GenerateOptions, logger: Logger) {
     await fs.writeFile(file, template);
     logger.log('\nCreated ' + chalk.cyan(relativePath + path.sep + name + ext) + '\n');
 }
+
