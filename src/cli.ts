@@ -2,16 +2,17 @@
 import * as yargs from 'yargs';
 import * as fs from 'mz/fs';
 import * as chalk from 'chalk';
-import {getNewCommits, Commit, getHead, getTasksForNewCommit, isRevertCommit} from './git';
+import {getNewCommits, Commit, getHead} from './git';
 import {TaskType} from './migration';
-import {migrate, generate} from '../index';
+import {migrate, generate, prepareCommitMsg, isMerkelRepository, createConfig, createMigrationDir} from '../index';
 import * as uuid from 'node-uuid';
-import mkdirp = require('mkdirp');
 import * as path from 'path';
 import * as tty from 'tty';
 import * as inquirer from 'inquirer';
 import {DbAdapter} from './adapter';
+import {PostgresAdapter} from './adapters/postgres';
 import {addGitHook, HookAlreadyFoundError} from './git';
+import * as pg from 'pg';
 const pkg = require('../package.json');
 require('update-notifier')({ pkg }).notify();
 
@@ -65,12 +66,9 @@ yargs.command(
     async (argv: InitArgv) => {
         try {
             process.stdout.write('\n');
-            try {
-                await fs.access('.merkelrc.json');
+            if (await isMerkelRepository()) {
                 process.stderr.write('.merkelrc.json already exists\n');
                 process.exit(1);
-            } catch (err) {
-                // continue
             }
             const config: Config = {};
             // try to read tsconfig
@@ -104,17 +102,14 @@ yargs.command(
                     when: () => !!argv.db
                 }
             ]);
-            // create migration dir
-            const made = await new Promise((resolve, reject) => mkdirp(<string>migrationDir, (err, made) => err ? reject(err) : resolve(made)));
-            if (made) {
+            if (await createMigrationDir(<string>migrationDir)) {
                 process.stdout.write(`Created ${chalk.cyan(<string>migrationDir)}\n`);
             }
-            // create config file
-            config.migrationDir = <string>migrationDir;
-            config.migrationOutDir = <string>migrationOutDir;
-            await fs.writeFile('.merkelrc.json', JSON.stringify(config, null, 2) + '\n');
+            createConfig({
+                migrationDir: <string>migrationDir,
+                migrationOutDir: <string>migrationOutDir,
+            });
             process.stdout.write(`Created ${chalk.cyan(path.join('.', '.merkelrc.json'))}\n`);
-            // init database
             if (initMetaNow) {
                 await DbAdapter.getFromUrl(argv.db).init();
             }
@@ -199,14 +194,11 @@ yargs.command(
     },
     async (argv: PrepareCommitMsgArgv) => {
         try {
-            let msg = await fs.readFile(argv.msgfile, 'utf8');
-            // check that migrations have not been deleted by a revert
-            if (isRevertCommit(msg)) {
-                process.stderr.write(chalk.bgYellow('WARNING: mirations have been removed by a git revert'));
-            }
-            // add commands
-            const taskList = await getTasksForNewCommit(argv.migrationDir);
-            msg += taskList.toString(true);
+            prepareCommitMsg(argv.msgfile, argv.migrationDir, {
+                log: process.stdout.write,
+                error: process.stderr.write,
+                warn: process.stderr.write
+            });
             process.exit(0);
         } catch (err) {
             process.stderr.write(chalk.red(err.stack));
@@ -339,9 +331,12 @@ interface MigrationCommandArgv extends Argv {
 function migrationCommand(type: TaskType) {
     return async (argv: MigrationCommandArgv) => {
         try {
-            migrate(type, argv.migrationOutDir, argv.db, argv.migrations, {
+            const adapter = new PostgresAdapter(argv.db, pg);
+            await adapter.init();
+            migrate(type, argv.migrationOutDir, adapter, argv.migrations, {
                 log: process.stdout.write,
-                error: process.stderr.write
+                error: process.stderr.write,
+                warn: process.stderr.write
             });
         } catch (err) {
             process.stderr.write(chalk.red('\nError: ' + err.stack));
@@ -377,7 +372,7 @@ yargs.command('generate', 'Generates a new migration file', {
         const name = argv.name || uuid.v1();
         const migrationDir = path.resolve(argv.migrationDir);
         generate({name: name, migrationDir: migrationDir, template: argv.template},
-        {log: process.stdout.write, error: process.stderr.write});
+        {log: process.stdout.write, error: process.stderr.write, warn: process.stderr.write});
         process.exit(0);
     } catch (err) {
         process.stderr.write(chalk.red(err.stack));

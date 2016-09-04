@@ -1,5 +1,5 @@
 import {TaskType, Task, Migration} from './src/migration';
-import {getHead} from './src/git';
+import {getHead, isRevertCommit, getTasksForNewCommit} from './src/git';
 import {DbAdapter} from './src/adapter';
 import * as chalk from 'chalk';
 import * as fs from 'mz/fs';
@@ -7,11 +7,37 @@ import * as path from 'path';
 import mkdirp = require('mkdirp');
 
 export interface Logger {
-
     log(msg: string): void;
-
     error(msg: string): void;
+    warn(msg: string): void;
+}
 
+export interface GenerateOptions {
+    migrationDir: string;
+    name: string;
+    template?: string;
+}
+
+export interface MerkelConfiguration {
+    migrationDir: string;
+    migrationOutDir: string;
+}
+
+export async function isMerkelRepository(): Promise<boolean> {
+    try {
+        await fs.access('.merkelrc.json');
+        return true;
+    } catch (err) {
+        return false;
+    }
+}
+
+export async function createMigrationDir(migrationDir: string) {
+    await new Promise((resolve, reject) => mkdirp(migrationDir, (err, made) => err ? reject(err) : resolve(made)));
+}
+
+export async function createConfig(config: MerkelConfiguration) {
+    await fs.writeFile('.merkelrc.json', JSON.stringify(config, null, 2) + '\n');
 }
 
 export async function migrate(type: TaskType, migrationDir: string, adapter: DbAdapter, migrations: string[], logger: Logger) {
@@ -28,14 +54,15 @@ export async function migrate(type: TaskType, migrationDir: string, adapter: DbA
     logger.log('\n' + chalk.green.bold('Migration successful') + '\n');
 }
 
-export interface GenerateOptions {
-
-    migrationDir: string;
-
-    name: string;
-
-    template?: string;
-
+export async function prepareCommitMsg(msgfile: string, migrationDir: string, logger: Logger) {
+    let msg = await fs.readFile(msgfile, 'utf8');
+    // check that migrations have not been deleted by a revert
+    if (isRevertCommit(msg)) {
+        logger.warn(chalk.bgYellow('WARNING: mirations have been removed by a git revert'));
+    }
+    // add commands
+    const taskList = await getTasksForNewCommit(migrationDir);
+    await fs.appendFile(msgfile, taskList.toString(true));
 }
 
 export async function generate(options: GenerateOptions, logger: Logger) {
