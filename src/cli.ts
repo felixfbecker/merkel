@@ -5,7 +5,6 @@ import * as chalk from 'chalk';
 import {getHead} from './git';
 import {TaskType} from './migration';
 import {getStatus, migrate, generate, prepareCommitMsg, isMerkelRepository, createConfig, createMigrationDir} from './index';
-import * as uuid from 'node-uuid';
 import * as path from 'path';
 import * as tty from 'tty';
 import * as inquirer from 'inquirer';
@@ -325,9 +324,8 @@ yargs.command('generate', 'Generates a new migration file', {
     }
 }, async (argv: GenerateArgv) => {
     try {
-        const name = argv.name || uuid.v1();
         const migrationDir = path.resolve(argv.migrationDir);
-        generate({name: name, migrationDir: migrationDir, template: argv.template},
+        generate({name: argv.name, migrationDir: migrationDir, template: argv.template},
         {log: process.stdout.write, error: process.stderr.write, warn: process.stderr.write});
         process.exit(0);
     } catch (err) {

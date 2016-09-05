@@ -6,7 +6,14 @@ import {getHead, isRevertCommit, getTasksForNewCommit} from './git';
 import * as chalk from 'chalk';
 import * as fs from 'mz/fs';
 import * as path from 'path';
+import * as uuid from 'node-uuid';
 import mkdirp = require('mkdirp');
+
+const DEFAULT_LOGGER = {
+    log: (): void => undefined,
+    warn: (): void => undefined,
+    error: (): void => undefined
+};
 
 export class Status {
 
@@ -18,6 +25,22 @@ export class Status {
 
     /** New commits since the last migration */
     public newCommits: CommitSequence;
+
+    /** Executes all tasks for newCommits */
+    public async executePendingTasks(migrationDir: string, adapter: DbAdapter, logger: Logger = DEFAULT_LOGGER): Promise<void> {
+        logger.log('Starting migration\n\n');
+        for (const commit of this.newCommits) {
+            logger.log(`${chalk.yellow(commit.shortSha1)} ${commit.subject}\n`);
+            for (const task of commit.tasks) {
+                logger.log(task.toString() + '...');
+                const interval = setInterval(() => logger.log('.'), 100);
+                await task.execute(migrationDir, adapter, this.head, commit);
+                clearInterval(interval);
+                logger.log(' Success\n');
+            }
+        }
+        logger.log(chalk.green('\nAll migrations successful\n'));
+    }
 
     /** Returns a string that can be printed to a CLI */
     public toString(): string {
@@ -77,7 +100,6 @@ export async function getStatus(adapter: DbAdapter, head: Commit, migrationDir: 
     return status;
 }
 
-
 export interface Logger {
     log(msg: string): void;
     error(msg: string): void;
@@ -86,7 +108,7 @@ export interface Logger {
 
 export interface GenerateOptions {
     migrationDir: string;
-    name: string;
+    name?: string;
     template?: string;
 }
 
@@ -112,7 +134,7 @@ export async function createConfig(config: MerkelConfiguration) {
     await fs.writeFile('.merkelrc.json', JSON.stringify(config, null, 2) + '\n');
 }
 
-export async function migrate(type: TaskType, migrationDir: string, adapter: DbAdapter, migrations: string[], logger: Logger) {
+export async function migrate(type: TaskType, migrationDir: string, adapter: DbAdapter, migrations: string[], logger: Logger = DEFAULT_LOGGER) {
     const head = await getHead();
     for (const name of migrations) {
         const task = new Task({
@@ -126,18 +148,19 @@ export async function migrate(type: TaskType, migrationDir: string, adapter: DbA
     logger.log('\n' + chalk.green.bold('Migration successful') + '\n');
 }
 
-export async function prepareCommitMsg(msgfile: string, migrationDir: string, logger: Logger) {
+export async function prepareCommitMsg(msgfile: string, migrationDir: string, logger: Logger = DEFAULT_LOGGER) {
     let msg = await fs.readFile(msgfile, 'utf8');
     // check that migrations have not been deleted by a revert
     if (isRevertCommit(msg)) {
-        logger.warn(chalk.bgYellow('WARNING: mirations have been removed by a git revert'));
+        logger.warn(chalk.bgYellow('WARNING: migrations have been removed by a git revert'));
     }
     // add commands
     const taskList = await getTasksForNewCommit(migrationDir);
     await fs.appendFile(msgfile, taskList.toString(true));
 }
 
-export async function generate(options: GenerateOptions, logger: Logger) {
+export async function generate(options: GenerateOptions, logger: Logger = DEFAULT_LOGGER) {
+    options.name = options.name || uuid.v1();
     let template: string;
     let ext: string = '';
     if (options.template) {
@@ -184,18 +207,17 @@ export async function generate(options: GenerateOptions, logger: Logger) {
             ].join('\n');
         }
     }
-    const file = `${options.migrationDir}/${name}${ext}`;
+    const file = `${options.migrationDir}/${options.name}${ext}`;
     const relativePath = path.relative(process.cwd(), options.migrationDir);
     // check if already exists
     try {
         await fs.access(file);
-        logger.error(chalk.red('\nError: Migration file ' + relativePath + path.sep + chalk.bold(name) + ext + ' already exists\n'));
+        logger.error(chalk.red('\nError: Migration file ' + relativePath + path.sep + chalk.bold(options.name) + ext + ' already exists\n'));
         throw new Error('Migration file already existed');
     } catch (err) {
         // continue
     }
     await new Promise((resolve, reject) => mkdirp(options.migrationDir, err => err ? reject(err) : resolve()));
     await fs.writeFile(file, template);
-    logger.log('\nCreated ' + chalk.cyan(relativePath + path.sep + name + ext) + '\n');
+    logger.log('\nCreated ' + chalk.cyan(relativePath + path.sep + options.name + ext) + '\n');
 }
-
