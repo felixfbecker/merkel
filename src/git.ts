@@ -112,7 +112,12 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
 
 export async function addGitHook(): Promise<['appended' | 'created', string]> {
     const hookPath = path.normalize('.git/hooks/prepare-commit-msg');
-    const hook = '\nnode_modules/.bin/merkel prepare-commit-msg $1 $2 $3\n';
+    const hook = [
+        '',
+        'PATH="$(pwd)/node_modules/merkel/bin:$PATH"',
+        'merkel prepare-commit-msg $1 $2 $3',
+        ''
+    ].join('\n');
     try {
         const content = await fs.readFile(hookPath, 'utf8');
         if (content.indexOf(hook.substring(1, hook.length - 1)) !== -1) {

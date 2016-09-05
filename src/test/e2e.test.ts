@@ -8,11 +8,15 @@ import * as assert from 'assert';
 import {AssertionError} from 'assert';
 import * as pg from 'pg';
 import * as del from 'del';
+import * as path from 'path';
+
+const PATH = path.resolve(__dirname + '/../../bin') + path.delimiter + process.env.PATH;
+console.log(PATH);
 
 describe.only('E2E', () => {
     describe('First migration in repository', () => {
         let client: pg.Client;
-        const repo = tmpdir() + '/merkel_test';
+        const repo = tmpdir() + '/merkel_test_repo';
         before(async () => {
             client = new pg.Client(process.env.MERKEL_DB);
             await new Promise<void>((resolve, reject) => client.connect((err) => err ? reject(err) : resolve()));
@@ -46,7 +50,7 @@ describe.only('E2E', () => {
             await fs.writeFile('User.ts', 'class User {}');
             await fs.writeFile(file, await fs.readFile(__dirname + '/migrations/test_migration.js'));
             await execFile('git', ['add', '.']);
-            await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`]);
+            await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`], {env: {PATH}});
             const status = await getStatus(adapter, await getHead(), 'migrations');
             assert.equal(status.newCommits.length, 1);
             await status.executePendingTasks('migrations', adapter);
@@ -55,7 +59,7 @@ describe.only('E2E', () => {
             await execFile('git', ['revert', '--no-commit']);
             await execFile('git', ['reset', 'HEAD', 'migrations']);
             await execFile('git', ['checkout', '--', 'migrations']);
-            await execFile('git', ['commit', '-m', `Rollback on User\n\n[merkel down ${uuid}]`]);
+            await execFile('git', ['commit', '-m', `Rollback on User\n\n[merkel down ${uuid}]`], {env: PATH});
             const downStatus = await getStatus(adapter, await getHead(), 'migrations');
             assert.equal(downStatus.newCommits.length, 1);
             await downStatus.executePendingTasks('migrations', adapter);
