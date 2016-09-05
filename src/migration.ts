@@ -128,10 +128,7 @@ export class Task {
         } catch (err) {
             throw new MigrationNotFoundError(this.migration, migrationDir);
         }
-        if (this.type === 'up' && typeof migrationExports.up !== 'function') {
-            throw new TaskTypeNotFoundError(this.migration, this.type, migrationDir);
-        }
-        if (this.type === 'down' && typeof migrationExports.down !== 'function') {
+        if (typeof migrationExports[this.type] !== 'function') {
             throw new TaskTypeNotFoundError(this.migration, this.type, migrationDir);
         }
         try {
@@ -142,7 +139,7 @@ export class Task {
                         exceptionHandler = reject;
                         process.on('uncaughtException', reject);
                     }),
-                    Promise.resolve(this.type === 'up' ? migrationExports.up() : migrationExports.down())
+                    Promise.resolve(migrationExports[this.type]())
                 ]);
             } finally {
                 process.removeListener('uncaughtException', exceptionHandler);
