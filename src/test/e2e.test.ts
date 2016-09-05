@@ -11,7 +11,6 @@ import * as del from 'del';
 import * as path from 'path';
 
 const PATH = path.resolve(__dirname + '/../../bin') + path.delimiter + process.env.PATH;
-console.log(PATH);
 
 describe.only('E2E', () => {
     describe('First migration in repository', () => {
@@ -20,7 +19,7 @@ describe.only('E2E', () => {
         before(async () => {
             client = new pg.Client(process.env.MERKEL_DB);
             await new Promise<void>((resolve, reject) => client.connect((err) => err ? reject(err) : resolve()));
-            await client.query('DROP TABLE IF EXISTS new_table');
+            await client.query('DROP TABLE IF EXISTS "new_table"');
             await client.query('DROP TABLE IF EXISTS merkel_meta');
             try {
                 await fs.access(repo);
@@ -53,10 +52,11 @@ describe.only('E2E', () => {
             await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`], {env: {PATH}});
             const status = await getStatus(adapter, await getHead(), 'migrations');
             assert.equal(status.newCommits.length, 1);
+            await execFile('npm', ['i', 'pg']);
             await status.executePendingTasks('migrations', adapter);
             const {rows} = await client.query(`SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'new_table'`);
             assert.equal(rows.length, 1);
-            await execFile('git', ['revert', '--no-commit']);
+            await execFile('git', ['revert', '--no-commit', 'HEAD']);
             await execFile('git', ['reset', 'HEAD', 'migrations']);
             await execFile('git', ['checkout', '--', 'migrations']);
             await execFile('git', ['commit', '-m', `Rollback on User\n\n[merkel down ${uuid}]`], {env: PATH});

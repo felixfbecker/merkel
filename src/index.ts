@@ -79,9 +79,9 @@ export class Status {
 export async function getStatus(adapter: DbAdapter, head: Commit, migrationDir: string): Promise<Status> {
     const status = new Status();
     status.lastTask = await adapter.getLastMigrationTask();
-    status.newCommits = await getNewCommits(status.lastTask.head);
     status.head = head;
     if (status.lastTask) {
+        status.newCommits = await getNewCommits(status.lastTask.head);
         // Load commit messages
         await Promise.all([status.lastTask.commit, status.lastTask.head].map(async (commit) => {
             try {
@@ -93,6 +93,8 @@ export async function getStatus(adapter: DbAdapter, head: Commit, migrationDir: 
                 }
             }
         }));
+    } else {
+        status.newCommits = await getNewCommits();
     }
     if (head) {
         await head.loadSubject();
