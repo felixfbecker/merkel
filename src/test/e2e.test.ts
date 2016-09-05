@@ -49,7 +49,7 @@ describe.only('E2E', () => {
             await fs.writeFile('User.ts', 'class User {}');
             await fs.writeFile(file, await fs.readFile(__dirname + '/migrations/test_migration.js'));
             await execFile('git', ['add', '.']);
-            await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`], {env: {PATH}});
+            await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`], {env: PATH});
             const status = await getStatus(adapter, await getHead(), 'migrations');
             assert.equal(status.newCommits.length, 1);
             await execFile('npm', ['i', 'pg']);
