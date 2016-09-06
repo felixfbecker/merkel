@@ -15,6 +15,7 @@ import {Commit} from '../git';
 import {PostgresAdapter} from '../adapters/postgres';
 import * as del from 'del';
 import {tmpdir} from 'os';
+import * as sinon from 'sinon';
 
 const repo = path.join(tmpdir(), 'merkel_test_api');
 
@@ -52,6 +53,21 @@ describe('migration', () => {
         });
     });
     describe('TaskList', () => {
+        describe('execute()', () => {
+            it('should run all its tasks', async () => {
+                const taskList = new TaskList();
+                const task = new Task();
+                taskList.push(task);
+                let stub: sinon.SinonStub;
+                try {
+                    stub = sinon.stub(task, 'execute');
+                    taskList.execute(null, null, null);
+                } finally {
+                    stub.restore();
+                }
+                sinon.assert.calledOnce(stub);
+            });
+        });
         describe('toString()', () => {
             it('should return a string of merkel commands', async () => {
                 const taskList = TaskList.from([

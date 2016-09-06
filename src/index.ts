@@ -9,6 +9,7 @@ import * as path from 'path';
 import * as uuid from 'node-uuid';
 import mkdirp = require('mkdirp');
 
+/* istanbul ignore next */
 const DEFAULT_LOGGER = {
     log: (): void => undefined,
     warn: (): void => undefined,
@@ -33,6 +34,7 @@ export class Status {
             logger.log(`${chalk.yellow(commit.shortSha1)} ${commit.subject}\n`);
             for (const task of commit.tasks) {
                 logger.log(task.toString() + '...');
+                /* istanbul ignore next */
                 const interval = setInterval(() => logger.log('.'), 100);
                 await task.execute(migrationDir, adapter, this.head, commit);
                 clearInterval(interval);
@@ -161,6 +163,7 @@ export async function generate(options: GenerateOptions, logger: Logger = DEFAUL
         try {
             template = await fs.readFile(options.template, 'utf8');
         } catch (err) {
+            /* istanbul ignore if */
             if (err.code !== 'ENOENT') {
                 throw err;
             }
@@ -184,6 +187,7 @@ export async function generate(options: GenerateOptions, logger: Logger = DEFAUL
                 ''
             ].join('\n');
         } catch (err) {
+            /* istanbul ignore if */
             if (err.code !== 'ENOENT') {
                 throw err;
             }
