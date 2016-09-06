@@ -59,7 +59,7 @@ interface InitArgv extends Argv {
 yargs.command(
     'init',
     'Initializes merkel configuration interactively',
-    { db: Object.assign(dbOption, { required: false }) },
+    { db: Object.assign(dbOption, { require: false }) },
     async (argv: InitArgv) => {
         try {
             process.stdout.write('\n');
