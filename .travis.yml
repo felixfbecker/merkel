@@ -1,8 +1,7 @@
 language: node_js
 
 node_js:
- - node
- - 4
+ - 6
 
 sudo: false
 
@@ -16,7 +15,7 @@ install:
 
 script:
  - npm run build
- - npm test
+ - npm run cover
 
 after_success:
  - 'nyc report --reporter=lcov > coverage.lcov && codecov'
