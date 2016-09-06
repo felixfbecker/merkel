@@ -3,8 +3,8 @@ import * as yargs from 'yargs';
 import * as fs from 'mz/fs';
 import * as chalk from 'chalk';
 import {getHead} from './git';
-import {TaskType} from './migration';
-import {getStatus, migrate, generate, prepareCommitMsg, isMerkelRepository, createConfig, createMigrationDir} from './index';
+import {TaskType, Task, Migration} from './migration';
+import {getStatus, generate, prepareCommitMsg, isMerkelRepository, createConfig, createMigrationDir} from './index';
 import * as path from 'path';
 import * as tty from 'tty';
 import * as inquirer from 'inquirer';
@@ -286,11 +286,17 @@ function migrationCommand(type: TaskType) {
         try {
             const adapter = createAdapterFromUrl(argv.db);
             await adapter.init();
-            migrate(type, argv.migrationOutDir, adapter, argv.migrations, {
-                log: process.stdout.write,
-                error: process.stderr.write,
-                warn: process.stderr.write
-            });
+            const head = await getHead();
+            for (const name of argv.migrations) {
+                const task = new Task({
+                    type: 'up',
+                    migration: new Migration({ name })
+                });
+                process.stdout.write(`Executing ${task.toString()}...`);
+                await task.execute(argv.migrationOutDir, adapter, head);
+                process.stdout.write(' Success\n');
+            }
+            process.stdout.write('\n' + chalk.green.bold('Migration successful') + '\n');
         } catch (err) {
             process.stderr.write(chalk.red('\nError: ' + err.stack));
             process.exit(1);

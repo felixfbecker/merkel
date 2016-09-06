@@ -32,6 +32,11 @@ export class MigrationExecutionError extends Error {
         super(chalk.red(chalk.bold('Migration error: ') + original.stack || original));
     }
 }
+export class UnknownTaskTypeError extends Error {
+    constructor(type: string) {
+        super('Unknown migration type ' + type);
+    }
+}
 
 export class Migration {
 
@@ -166,7 +171,7 @@ export class Task {
         } else if (this.type === 'down') {
             return chalk.bgRed('▼ DOWN ' + this.migration.name);
         } else {
-            throw new Error('Unknown migration type ' + this.type);
+            throw new UnknownTaskTypeError(this.type);
         }
     }
 }

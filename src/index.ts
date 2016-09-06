@@ -49,7 +49,7 @@ export class Status {
             str += `Last migration:      ${this.lastTask.toString()}\n`;
             str += `Applied at:          ${this.lastTask.appliedAt}\n`;
             str += `Triggered by commit: ${this.lastTask.commit.toString()}\n`;
-            str += `HEAD at execution:   ${this.lastTask.commit.toString()}\n`;
+            str += `HEAD at execution:   ${this.lastTask.head.toString()}\n`;
         } else {
             str += `Last migration:      No migration run yet\n`;
         }
@@ -61,7 +61,7 @@ export class Status {
         const relevantCommits = this.newCommits.filter(commit => commit.tasks.length > 0);
         if (relevantCommits.length === 0) {
             str += 'No pending migrations\n';
-            return;
+            return str;
         }
         const migrationCount = relevantCommits.reduce((prev: number, curr: Commit) => prev + curr.tasks.length, 0);
         str += chalk.underline(`${migrationCount} pending migration${migrationCount > 1 ? 's' : ''}:\n\n`);
@@ -134,20 +134,6 @@ export async function createMigrationDir(migrationDir: string) {
 
 export async function createConfig(config: MerkelConfiguration) {
     await fs.writeFile('.merkelrc.json', JSON.stringify(config, null, 2) + '\n');
-}
-
-export async function migrate(type: TaskType, migrationDir: string, adapter: DbAdapter, migrations: string[], logger: Logger = DEFAULT_LOGGER) {
-    const head = await getHead();
-    for (const name of migrations) {
-        const task = new Task({
-            type: 'up',
-            migration: new Migration({ name })
-        });
-        logger.log(`Executing ${task.toString()}...`);
-        await task.execute(migrationDir, adapter, head);
-        logger.log(' Success\n');
-    }
-    logger.log('\n' + chalk.green.bold('Migration successful') + '\n');
 }
 
 export async function prepareCommitMsg(msgfile: string, migrationDir: string, logger: Logger = DEFAULT_LOGGER) {

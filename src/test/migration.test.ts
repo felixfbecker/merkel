@@ -7,6 +7,7 @@ import {
     MigrationNotFoundError,
     MigrationExecutionError,
     TaskTypeNotFoundError,
+    UnknownTaskTypeError,
     Task,
     TaskList
 } from '../migration';
@@ -186,6 +187,21 @@ describe('migration', () => {
                     }
                 } finally {
                     process.addListener('uncaughtException', listener);
+                }
+            });
+        });
+        describe('toString', () => {
+            it('should throw if the task type is unknown', async () => {
+                const task = new Task(<any>{type: 'd'});
+                try {
+                    task.toString();
+                    throw new assert.AssertionError({
+                        message: 'Task did not throw error on toString with wrong type'
+                    });
+                } catch (err) {
+                    if (!(err instanceof UnknownTaskTypeError)) {
+                        throw err;
+                    }
                 }
             });
         });

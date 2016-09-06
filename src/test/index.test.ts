@@ -5,15 +5,14 @@ import {
     MigrationAlreadyExistsError,
     createMigrationDir,
     prepareCommitMsg,
-    getStatus
+    Status
 } from '../index';
-import {getHead} from '../git';
-import {createAdapterFromUrl, DbAdapter} from '../adapter';
+import {Task, TaskList, Migration} from '../migration';
+import {Commit, CommitSequence} from '../git';
 import * as path from 'path';
 import * as fs from 'mz/fs';
 import * as del from 'del';
 import * as assert from 'assert';
-import * as pg from 'pg';
 import {tmpdir} from 'os';
 import {execFile} from 'mz/child_process';
 
@@ -159,29 +158,51 @@ describe('API', () => {
         });
     });
     describe('Status', () => {
-        let adapter: DbAdapter;
-        before(async () => {
-            await del('*', <any>{dot: true});
-            adapter = createAdapterFromUrl(process.env.MERKEL_DB);
-            await adapter.init();
-            const client = new pg.Client(process.env.MERKEL_DB);
-            await new Promise((resolve, reject) => client.connect(err => err ? reject(err) : resolve()));
-            await client.query('TRUNCATE TABLE merkel_meta RESTART IDENTITY');
-            await client.end();
-        });
         describe('toString', () => {
-            it('should print the repositories current status', async () => {
-                await execFile('git', ['init']);
-                await fs.mkdir('migrations');
-                await fs.writeFile('migrations/user.js', 'export function up () {}');
-                await execFile('git', ['add', '.']);
-                await execFile('git', ['commit', '-m', `first migration\n\n[merkel up user]`]);
-                const status = await getStatus(adapter, await getHead(), 'migrations');
+            it('should print the repositories current status', () => {
+                const status = new Status();
+                status.head = new Commit({sha1: '0c0302301'});
+                status.newCommits = new CommitSequence();
+                const tasks = new TaskList();
+                tasks.push(new Task({
+                    type: 'up',
+                    migration: new Migration({name: 'user'})
+                }));
+                const commit = new Commit({
+                    sha1: '0c0302301',
+                    tasks: tasks
+                });
+                status.newCommits.push(commit);
                 const output = status.toString();
                 assert(output.includes('Last migration:      No migration run yet'));
-                assert(output.includes('first migration'));
+                assert(output.includes('<unknown commit>'));
                 assert(output.includes('1 pending migration:'));
                 assert(output.includes('▲ UP   user'));
+            });
+            it('should print the last task', () => {
+                const status = new Status();
+                status.head = new Commit({sha1: '0c0302301', message: 'top'});
+                status.lastTask = new Task({
+                    type: 'up',
+                    appliedAt: new Date(0),
+                    commit: new Commit({
+                        sha1: '9913944',
+                        message: 'initial'
+                    }),
+                    head: new Commit({
+                        sha1: '9991920',
+                        message: 'header'
+                    }),
+                    migration: new Migration({name: 'user'})
+                });
+                status.newCommits = new CommitSequence();
+                const output = status.toString();
+                assert(output.includes('▲ UP   user'));
+                assert(output.includes('Thu Jan 01 1970 01:00:00 GMT+0100'));
+                assert(output.includes('initial'));
+                assert(output.includes('header'));
+                assert(output.includes('↓ -1 commit'));
+                assert(output.includes('top'));
             });
         });
     });
