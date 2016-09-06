@@ -78,12 +78,12 @@ yargs.command(
                 {
                     name: 'migrationDir',
                     message: tsconfig ? 'Directory for new migration files:' : 'Directory for migration files:',
-                    default: (tsconfig && tsconfig.compilerOptions && tsconfig.compilerOptions.rootDir + path.sep + 'migrations') || './migrations'
+                    default: (tsconfig && tsconfig.compilerOptions && tsconfig.compilerOptions.rootDir && tsconfig.compilerOptions.rootDir + path.sep + 'migrations') || './migrations'
                 },
                 {
                     name: 'migrationOutDir',
                     message: 'Directory for compiled migration files:',
-                    default: (tsconfig && tsconfig.compilerOptions && tsconfig.compilerOptions.outDir + path.sep + 'migrations') || './migrations',
+                    default: (tsconfig && tsconfig.compilerOptions && tsconfig.compilerOptions.outDir && tsconfig.compilerOptions.rootDir + path.sep + 'migrations') || './migrations',
                     when: () => !!tsconfig
                 },
                 {
