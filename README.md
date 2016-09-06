@@ -9,6 +9,7 @@
 [![Dependency Status](https://gemnasium.com/badges/github.com/felixfbecker/merkel.svg)](https://gemnasium.com/github.com/felixfbecker/merkel)
 ![Node Version](http://img.shields.io/node/v/merkel.svg)
 [![License](https://img.shields.io/npm/l/merkel.svg?maxAge=2592000)](https://github.com/felixfbecker/merkel/blob/master/LICENSE.txt)
+[![Gitter](https://badges.gitter.im/felixfbecker/merkel.svg)](https://gitter.im/felixfbecker/merkel?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 
 `merkel` is a framework-agnostic database migration tool designed to autonomously run in Continuous Deployment,
