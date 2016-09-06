@@ -1,5 +1,5 @@
 import {tmpdir} from 'os';
-import {execFile} from 'mz/child_process';
+import {execFile, exec} from 'mz/child_process';
 import {createConfig, createMigrationDir, generate, getStatus} from '../index';
 import {PostgresAdapter} from '../adapters/postgres';
 import {addGitHook, getHead} from '../git';
@@ -12,7 +12,7 @@ import * as path from 'path';
 
 const PATH = path.resolve(__dirname + '/../../bin') + path.delimiter + process.env.PATH;
 
-describe.only('E2E', () => {
+describe('E2E', () => {
     describe('First migration in repository', () => {
         let client: pg.Client;
         const repo = tmpdir() + '/merkel_test_repo';
@@ -50,7 +50,7 @@ describe.only('E2E', () => {
             await fs.writeFile(file, await fs.readFile(__dirname + '/migrations/test_migration.js'));
             await execFile('git', ['add', '.']);
             await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`], {env: {PATH}});
-            await execFile('npm', ['i', 'pg']);
+            await exec('npm i pg');
             const status = await getStatus(adapter, await getHead(), 'migrations');
             assert.equal(status.newCommits.length, 1);
             await status.executePendingTasks('migrations', adapter);
