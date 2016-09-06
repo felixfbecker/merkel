@@ -1,8 +1,8 @@
 
 import {getNewCommits, Commit, CommitSequence} from './git';
 import {DbAdapter} from './adapter';
-import {TaskType, Task, Migration} from './migration';
-import {getHead, isRevertCommit, getTasksForNewCommit} from './git';
+import {Task} from './migration';
+import {isRevertCommit, getTasksForNewCommit} from './git';
 import * as chalk from 'chalk';
 import * as fs from 'mz/fs';
 import * as path from 'path';
