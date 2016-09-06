@@ -161,6 +161,12 @@ export async function prepareCommitMsg(msgfile: string, migrationDir: string, lo
     await fs.appendFile(msgfile, taskList.toString(true));
 }
 
+export class MigrationAlreadyExistsError extends Error {
+    constructor(file: string) {
+        super('Migration file already existed: ' + file);
+    }
+}
+
 export async function generate(options: GenerateOptions, logger: Logger = DEFAULT_LOGGER) {
     options.name = options.name || uuid.v1();
     let template: string;
@@ -215,8 +221,11 @@ export async function generate(options: GenerateOptions, logger: Logger = DEFAUL
     try {
         await fs.access(file);
         logger.error(chalk.red('\nError: Migration file ' + relativePath + path.sep + chalk.bold(options.name) + ext + ' already exists\n'));
-        throw new Error('Migration file already existed');
+        throw new MigrationAlreadyExistsError(file);
     } catch (err) {
+        if (err instanceof MigrationAlreadyExistsError) {
+            throw err;
+        }
         // continue
     }
     await new Promise((resolve, reject) => mkdirp(options.migrationDir, err => err ? reject(err) : resolve()));

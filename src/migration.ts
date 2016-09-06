@@ -69,6 +69,9 @@ export class TaskList extends Array<Task> {
             }
             for (const type of ['up', 'down']) {
                 const tasks = this.filter(task => task.type === type);
+                if (tasks.length === 0) {
+                    continue;
+                }
                 let command = `[merkel ${type} ${tasks.map(task => task.migration.name).join(' ')}]\n`;
                 if (command.length > 72) {
                     command = `[\n  merkel ${type}\n  ${tasks.map(task => task.migration.name).join('\n  ')}\n]\n`;

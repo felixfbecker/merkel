@@ -11,12 +11,26 @@ import {
 } from '../migration';
 import {Commit} from '../git';
 import {PostgresAdapter} from '../adapters/postgres';
+import * as del from 'del';
+import {tmpdir} from 'os';
+
+const repo = path.join(tmpdir(), 'merkel_test_api');
 
 describe('migration', () => {
     describe('Migration', () => {
+        before(async () => {
+            try {
+                await fs.access(repo);
+            } catch (err) {
+                await fs.mkdir(repo);
+            }
+            process.chdir(repo);
+            await del('*', <any>{dot: true});
+        });
         describe('getPath()', () => {
             it('should calculate the right path', async () => {
-                await fs.appendFile(path.join('migrations', 'test.js'), 'up');
+                await fs.mkdir(path.join(repo, 'migrations'));
+                await fs.writeFile(path.join('migrations', 'test.js'), 'up');
                 const migration = new Migration({name: 'test'});
                 assert.equal(await migration.getPath('migrations'), path.resolve('migrations/test.js'));
             });
@@ -30,6 +44,9 @@ describe('migration', () => {
                     }
                 }
             });
+        });
+        after(async () => {
+            await del('*', <any>{dot: true});
         });
     });
     describe('TaskList', () => {

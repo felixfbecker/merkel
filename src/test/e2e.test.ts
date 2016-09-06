@@ -1,7 +1,7 @@
 import {tmpdir} from 'os';
 import {execFile, exec} from 'mz/child_process';
 import {createConfig, createMigrationDir, generate, getStatus} from '../index';
-import {PostgresAdapter} from '../adapters/postgres';
+import {createAdapterFromUrl} from '../adapter';
 import {addGitHook, getHead} from '../git';
 import * as fs from 'mz/fs';
 import * as assert from 'assert';
@@ -29,7 +29,7 @@ describe('E2E', () => {
         await del('*', <any>{dot: true});
     });
     it('should behave properly', async () =>  {
-        const adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
+        const adapter = createAdapterFromUrl(process.env.MERKEL_DB);
         await adapter.init();
         await execFile('git', ['init']);
         await createMigrationDir('migrations');

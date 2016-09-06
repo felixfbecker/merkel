@@ -3,6 +3,18 @@ import {Task, Migration, TaskType} from './migration';
 import {Commit} from './git';
 import {parse} from 'url';
 
+export class InvalidConnectionError extends Error {
+    constructor(url: string) {
+        super('Invalid connection URL ' + url);
+    }
+}
+
+export class UnsupportedDialectError extends Error {
+    constructor(dialect: string) {
+        super('Unsupported dialect: ' + dialect);
+    }
+}
+
 export interface TableRow {
     id: number;
     name: string;
@@ -42,8 +54,13 @@ import {PostgresAdapter} from './adapters/postgres';
 export function createAdapterFromUrl(url: string): DbAdapter {
     const dialect = parse(url).protocol;
     switch (dialect) {
-        case 'postgres:': return new PostgresAdapter(url, require(process.cwd() + '/node_modules/pg'));
-        case null: throw new Error('Invalid connection URL ' + url);
-        default: throw new Error('Unssuported dialect ' + dialect);
+        case 'postgres:':
+            try {
+                return new PostgresAdapter(url, require(process.cwd() + '/node_modules/pg'));
+            } catch (err) {
+                return new PostgresAdapter(url, require('pg'));
+            }
+        case null: throw new InvalidConnectionError(url);
+        default: throw new UnsupportedDialectError(dialect);
     }
 }

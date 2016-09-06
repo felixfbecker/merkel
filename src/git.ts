@@ -118,17 +118,18 @@ export async function addGitHook(): Promise<['appended' | 'created', string]> {
         'merkel prepare-commit-msg $1 $2 $3',
         ''
     ].join('\n');
+    let content: string;
     try {
-        const content = await fs.readFile(hookPath, 'utf8');
-        if (content.indexOf(hook.substring(1, hook.length - 1)) !== -1) {
-            throw new HookAlreadyFoundError();
-        }
-        await fs.appendFile(hookPath, hook);
-        return ['appended', hookPath] as ['appended', string];
+        content = await fs.readFile(hookPath, 'utf8');
     } catch (err) {
         await fs.writeFile(hookPath, '#!/bin/sh\n' + hook);
         return ['created', hookPath] as ['created', string];
     }
+    if (content && content.indexOf(hook.substring(1, hook.length - 1)) !== -1) {
+        throw new HookAlreadyFoundError();
+    }
+    await fs.appendFile(hookPath, hook);
+    return ['appended', hookPath] as ['appended', string];
 }
 
 /**

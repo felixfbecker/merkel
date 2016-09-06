@@ -7,7 +7,8 @@ import {
     isRevertCommit,
     parseGitLog,
     getTasksForNewCommit,
-    CommitSequence
+    CommitSequence,
+    HookAlreadyFoundError
 } from '../git';
 import {execFile} from 'mz/child_process';
 import * as assert from 'assert';
@@ -34,6 +35,25 @@ describe('git', () => {
             await addGitHook();
             const hook = await fs.readFile(path.join(process.cwd(), '.git/hooks/prepare-commit-msg'), 'utf8');
             assert(hook.includes('merkel prepare-commit-msg'));
+        });
+        it('should not add githook twice', async () => {
+            await addGitHook();
+            try {
+                await addGitHook();
+                throw new assert.AssertionError({
+                    message: 'it added the git hook twice.'
+                });
+            } catch (err) {
+                if (!(err instanceof HookAlreadyFoundError)) {
+                    throw err;
+                }
+            }
+        });
+        it('should append the githook, when the prepare-commit-msg hook already exists', async () => {
+            await fs.writeFile(path.join(process.cwd(), '.git', 'hooks', 'prepare-commit-msg'), 'keep me\n');
+            await addGitHook();
+            const hook = await fs.readFile(path.join(process.cwd(), '.git/hooks/prepare-commit-msg'), 'utf8');
+            assert(hook.includes('keep me'));
         });
     });
     describe('getNewCommits', () => {
