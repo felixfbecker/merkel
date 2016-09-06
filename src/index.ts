@@ -78,6 +78,9 @@ export class Status {
     }
 }
 
+/**
+ * Returns an object with information about the current status of the repository
+ */
 export async function getStatus(adapter: DbAdapter, head: Commit, migrationDir: string): Promise<Status> {
     const status = new Status();
     status.lastTask = await adapter.getLastMigrationTask();
@@ -110,17 +113,35 @@ export interface Logger {
     warn(msg: string): void;
 }
 
+/** Options for [[generate]] */
 export interface GenerateOptions {
+
+    /** The directory to generate the migration file in */
     migrationDir: string;
+
+    /** The name of the migration. By default a UUID */
     name?: string;
+
+    /** The path to a template file to use */
     template?: string;
 }
 
+/** Options for [[createConfig]] */
 export interface MerkelConfiguration {
+
+    /** The directory where new migration files should be generated */
     migrationDir: string;
+
+    /**
+     * The directory where the JavaScript migration files can be found.
+     * Can differ from `migrationDir` when using a transpiler.
+     */
     migrationOutDir: string;
 }
 
+/**
+ * Checks if a folder has a .merkelrc.json file
+ */
 export async function isMerkelRepository(): Promise<boolean> {
     try {
         await fs.access('.merkelrc.json');
@@ -130,14 +151,24 @@ export async function isMerkelRepository(): Promise<boolean> {
     }
 }
 
+/**
+ * Creates the migration directory
+ */
 export async function createMigrationDir(migrationDir: string) {
     await new Promise((resolve, reject) => mkdirp(migrationDir, (err, made) => err ? reject(err) : resolve(made)));
 }
 
+/**
+ * Creates a new .merkelrc.json
+ */
 export async function createConfig(config: MerkelConfiguration) {
     await fs.writeFile('.merkelrc.json', JSON.stringify(config, null, 2) + '\n');
 }
 
+/**
+ * Prepares a commit message for git by adding merkel commands to it.
+ * @param msgfile The path to the file with the commit message
+ */
 export async function prepareCommitMsg(msgfile: string, migrationDir: string, logger: Logger = DEFAULT_LOGGER) {
     let msg = await fs.readFile(msgfile, 'utf8');
     // check that migrations have not been deleted by a revert
@@ -155,6 +186,9 @@ export class MigrationAlreadyExistsError extends Error {
     }
 }
 
+/**
+ * Generates a new migration file
+ */
 export async function generate(options: GenerateOptions, logger: Logger = DEFAULT_LOGGER) {
     options.name = options.name || uuid.v1();
     let template: string;
