@@ -26,14 +26,14 @@ describe('PostgresAdapter', () => {
             await adapter.init();
             const client = new pg.Client(process.env.MERKEL_DB);
             await new Promise<void>((resolve, reject) => client.connect(err => err ? reject(err) : resolve()));
-            const {rows} = await client.query(`SELECT column_name, data_type FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'merkel_meta'`);
+            const {rows} = await client.query(`SELECT column_name, data_type FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'merkel_meta' ORDER BY column_name ASC`);
             assert.deepEqual(rows, [
-                { column_name: 'id', data_type: 'integer' },
-                { column_name: 'name', data_type: 'text' },
-                { column_name: 'type', data_type: 'USER-DEFINED' },
+                { column_name: 'applied_at', data_type: 'timestamp with time zone' },
                 { column_name: 'commit', data_type: 'text' },
                 { column_name: 'head', data_type: 'text' },
-                { column_name: 'applied_at', data_type: 'timestamp with time zone' }
+                { column_name: 'id', data_type: 'integer' },
+                { column_name: 'name', data_type: 'text' },
+                { column_name: 'type', data_type: 'USER-DEFINED' }
             ]);
             client.end();
         });
