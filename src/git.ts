@@ -12,6 +12,12 @@ export class HookAlreadyFoundError extends Error {
 export class NoCommitsError extends Error {
 }
 
+export class UnknownCommitError extends Error {
+    constructor(commit: Commit) {
+        super(`The commit ${commit.shortSha1} does not exist in this repository. Did you do a shallow clone?`);
+    }
+}
+
 export class CommitSequence extends Array<Commit> {
     /**
      * Wether the HEAD commit was before the last migration HEAD commit
@@ -73,6 +79,14 @@ async function hasHead(): Promise<Boolean> {
  * @param from The commit sha1 of the commit when the last migration was running
  */
 export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
+    if (since) {
+        try {
+            await execFile('git', ['show', since.sha1]);
+        } catch (err) {
+            // the last migration head does not exist in this repository
+            throw new UnknownCommitError(since);
+        }
+    }
     if (!(await hasHead())) {
         return new CommitSequence();
     }
@@ -94,16 +108,7 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
         args.push(headBehindLastMigration ? 'HEAD..' + since.sha1 : since.sha1 + '..HEAD');
     }
     let stdout: Buffer;
-    try {
-        [stdout] = await execFile('git', args);
-    } catch (err) {
-        if (err.code !== 128) {
-            throw err;
-        }
-        // the last migration head does not exist in this repository
-        args.pop();
-        [stdout] = await execFile('git');
-    }
+    [stdout] = await execFile('git', args);
     const output = stdout.toString().trim();
     const commits = parseGitLog(output);
     commits.isReversed = headBehindLastMigration;

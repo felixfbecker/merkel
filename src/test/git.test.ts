@@ -8,7 +8,8 @@ import {
     parseGitLog,
     getTasksForNewCommit,
     CommitSequence,
-    HookAlreadyFoundError
+    HookAlreadyFoundError,
+    UnknownCommitError
 } from '../git';
 import {execFile} from 'mz/child_process';
 import * as assert from 'assert';
@@ -109,6 +110,16 @@ describe('git', () => {
                 assert.equal(commitSequence[0].message, '2');
                 assert.equal(commitSequence[1].message, '3');
             });
+        });
+        it('should throw an UnknownCommitError when the since commit is unknown', async () => {
+            try {
+                await getNewCommits(new Commit({sha1: 'whatever'}));
+                throw new assert.AssertionError({message: 'Did not throw'});
+            } catch (err) {
+                if (!(err instanceof UnknownCommitError)) {
+                    throw err;
+                }
+            }
         });
     });
     describe('getHead', () => {
