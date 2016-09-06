@@ -3,3 +3,5 @@ typings/
 .vscode/
 typedoc/
 src/
+coverage/
+.nyc_output/
