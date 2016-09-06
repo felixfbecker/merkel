@@ -27,12 +27,4 @@ before_test:
   - echo Password12! | psql -c 'CREATE DATABASE merkel_test;' -U postgres
 
 test_script:
-  - npm run cover
-
-after_test:
-  - ps: |
-      $env:PATH = 'C:\Program Files\Git\usr\bin;' + $env:PATH
-      if (Test-Path env:\COVERAGE) {
-        Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
-        bash codecov.sh -f "coverage\lcov.info"
-      }
+  - npm test
