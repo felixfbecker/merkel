@@ -293,7 +293,9 @@ function migrationCommand(type: TaskType) {
                     migration: new Migration({ name })
                 });
                 process.stdout.write(`Executing ${task.toString()}...`);
+                const interval = setInterval(() => process.stdout.write('.'), 100);
                 await task.execute(argv.migrationOutDir, adapter, head);
+                clearInterval(interval);
                 process.stdout.write(' Success\n');
             }
             process.stdout.write('\n' + chalk.green.bold('Migration successful') + '\n');
