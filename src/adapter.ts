@@ -30,6 +30,7 @@ export abstract class DbAdapter {
     public abstract getLastMigrationTask(): Promise<Task>;
     public abstract logMigrationTask(task: Task): Promise<void>;
     public abstract checkIfTaskCanExecute(task: Task): Promise<void>;
+    public abstract close(): Promise<void>;
 
     protected rowToTask(row: TableRow): Task {
         const task = new Task({

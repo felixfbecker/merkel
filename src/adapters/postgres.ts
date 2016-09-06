@@ -49,6 +49,13 @@ export class PostgresAdapter extends DbAdapter {
         `);
     }
 
+    close(): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            this.client.on('end', resolve);
+            this.client.end();
+        });
+    }
+
     /**
      * Gets the last migration task that was executed
      */

@@ -37,7 +37,13 @@ describe('PostgresAdapter', () => {
             ]);
             client.end();
         });
-
+        it('should not fail initializing twice', async () => {
+            let adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
+            await adapter.init();
+            await adapter.close();
+            adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
+            await adapter.init();
+        });
     });
     describe('logMigrationTask', () => {
         it('should log migrations correctly', async () => {
