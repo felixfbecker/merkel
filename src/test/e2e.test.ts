@@ -47,6 +47,8 @@ describe('E2E', () => {
         await fs.access(file).catch(() => new AssertionError({message: 'migration file not created'}));
         await fs.writeFile('User.ts', 'class User {}');
         await fs.writeFile(file, await fs.readFile(__dirname + '/migrations/test_migration.js'));
+        await execFile('git', ['config', 'user.email', 'whatever@whatever.com']);
+        await execFile('git', ['config', 'user.name', 'whatever']);
         await execFile('git', ['add', '.']);
         await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`], {env: {PATH}});
         await exec('npm i pg');
