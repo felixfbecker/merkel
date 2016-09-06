@@ -44,7 +44,7 @@ export class Status {
 
     /** Returns a string that can be printed to a CLI */
     public toString(): string {
-        let str: string;
+        let str: string = '';
         if (this.lastTask) {
             str += `Last migration:      ${this.lastTask.toString()}\n`;
             str += `Applied at:          ${this.lastTask.appliedAt}\n`;

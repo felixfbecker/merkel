@@ -4,12 +4,16 @@ import {
     generate,
     MigrationAlreadyExistsError,
     createMigrationDir,
-    prepareCommitMsg
+    prepareCommitMsg,
+    getStatus
 } from '../index';
+import {getHead} from '../git';
+import {createAdapterFromUrl, DbAdapter} from '../adapter';
 import * as path from 'path';
 import * as fs from 'mz/fs';
 import * as del from 'del';
 import * as assert from 'assert';
+import * as pg from 'pg';
 import {tmpdir} from 'os';
 import {execFile} from 'mz/child_process';
 
@@ -152,6 +156,33 @@ describe('API', () => {
             const content = await fs.readFile('msgfile', 'utf8');
             assert(content.includes('[merkel up test]'), 'migration was not correctly added to commit message');
             assert(!content.includes('[merkel down'), 'migration was not correctly added to commit message');
+        });
+    });
+    describe('Status', () => {
+        let adapter: DbAdapter;
+        before(async () => {
+            await del('*', <any>{dot: true});
+            adapter = createAdapterFromUrl(process.env.MERKEL_DB);
+            await adapter.init();
+            const client = new pg.Client(process.env.MERKEL_DB);
+            await new Promise((resolve, reject) => client.connect(err => err ? reject(err) : resolve()));
+            await client.query('TRUNCATE TABLE merkel_meta RESTART IDENTITY');
+            await client.end();
+        });
+        describe('toString', () => {
+            it('should print the repositories current status', async () => {
+                await execFile('git', ['init']);
+                await fs.mkdir('migrations');
+                await fs.writeFile('migrations/user.js', 'export function up () {}');
+                await execFile('git', ['add', '.']);
+                await execFile('git', ['commit', '-m', `first migration\n\n[merkel up user]`]);
+                const status = await getStatus(adapter, await getHead(), 'migrations');
+                const output = status.toString();
+                assert(output.includes('Last migration:      No migration run yet'));
+                assert(output.includes('first migration'));
+                assert(output.includes('1 pending migration:'));
+                assert(output.includes('▲ UP   user'));
+            });
         });
     });
     after(async () => {
