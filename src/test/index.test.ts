@@ -198,7 +198,7 @@ describe('API', () => {
                 status.newCommits = new CommitSequence();
                 const output = status.toString();
                 assert(output.includes('▲ UP   user'));
-                assert(output.includes('Thu Jan 01 1970 01:00:00 GMT+0100'));
+                assert(output.includes('Thu Jan 01 1970'));
                 assert(output.includes('initial'));
                 assert(output.includes('header'));
                 assert(output.includes('↓ -1 commit'));
