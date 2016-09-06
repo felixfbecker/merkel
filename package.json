@@ -12,7 +12,6 @@
   "bin": "./bin/merkel",
   "main": "./dist/index.ts",
   "scripts": {
-    "postinstall": "merkel init || exit 0",
     "build": "tsc -p .",
     "watch": "tsc -w -p .",
     "clean": "rimraf dist",
