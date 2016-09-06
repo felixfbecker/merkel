@@ -9,9 +9,7 @@ import * as path from 'path';
 import * as tty from 'tty';
 import * as inquirer from 'inquirer';
 import {createAdapterFromUrl} from './adapter';
-import {PostgresAdapter} from './adapters/postgres';
 import {addGitHook, HookAlreadyFoundError} from './git';
-import * as pg from 'pg';
 const pkg = require('../package.json');
 require('update-notifier')({ pkg }).notify();
 
@@ -286,7 +284,7 @@ interface MigrationCommandArgv extends Argv {
 function migrationCommand(type: TaskType) {
     return async (argv: MigrationCommandArgv) => {
         try {
-            const adapter = new PostgresAdapter(argv.db, pg);
+            const adapter = createAdapterFromUrl(argv.db);
             await adapter.init();
             migrate(type, argv.migrationOutDir, adapter, argv.migrations, {
                 log: process.stdout.write,
