@@ -12,7 +12,8 @@
     "yargs": "registry:npm/yargs#5.0.0+20160817153026"
   },
   "globalDependencies": {
-    "mz": "registry:dt/mz#0.0.0+20160811111312"
+    "mz": "registry:dt/mz#0.0.0+20160811111312",
+    "node": "registry:env/node#6.0.0+20160902022231"
   },
   "globalDevDependencies": {
     "mocha": "registry:env/mocha#2.2.5+20160723033700"
