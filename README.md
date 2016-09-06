@@ -5,6 +5,7 @@
 [![Version](https://img.shields.io/npm/v/merkel.svg?maxAge=2592000)](https://www.npmjs.com/package/merkel)
 [![Downloads](https://img.shields.io/npm/dt/merkel.svg?maxAge=2592000)](https://www.npmjs.com/package/merkel)
 [![Build Status](https://travis-ci.org/felixfbecker/merkel.svg?branch=master)](https://travis-ci.org/felixfbecker/merkel)
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/ycuaue3nmlstep78/branch/master?svg=true)](https://ci.appveyor.com/project/felixfbecker/merkel/branch/master)
 [![Coverage](https://codecov.io/gh/felixfbecker/merkel/branch/master/graph/badge.svg?token=BuoxrgBs54)](https://codecov.io/gh/felixfbecker/merkel)
 [![Dependency Status](https://gemnasium.com/badges/github.com/felixfbecker/merkel.svg)](https://gemnasium.com/github.com/felixfbecker/merkel)
 ![Node Version](http://img.shields.io/node/v/merkel.svg)

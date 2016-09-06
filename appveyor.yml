@@ -1,0 +1,38 @@
+version: '{build}'
+
+platform:
+  - x64
+
+services:
+  - postgresql
+
+shallow_clone: true
+
+cache:
+  - node_modules
+
+environment:
+  MERKEL_DB: postgres://postgres:Password12!@localhost:5432/merkel_test
+  PGPASSWORD: Password12!
+
+install:
+  - ps: Install-Product node $env:NODE_VERSION x64
+  - npm install
+  - node_modules\.bin\typings install
+
+build:
+  - npm run build
+
+before_test:
+  - echo Password12! | psql -c 'CREATE DATABASE merkel_test;' -U postgres
+
+test_script:
+  - npm run cover
+
+after_test:
+  - ps: |
+      $env:PATH = 'C:\Program Files\Git\usr\bin;' + $env:PATH
+      if (Test-Path env:\COVERAGE) {
+        Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
+        bash codecov.sh -f "coverage\lcov.info"
+      }
