@@ -8,7 +8,7 @@ import {getStatus, migrate, generate, prepareCommitMsg, isMerkelRepository, crea
 import * as path from 'path';
 import * as tty from 'tty';
 import * as inquirer from 'inquirer';
-import {DbAdapter} from './adapter';
+import {createAdapterFromUrl} from './adapter';
 import {PostgresAdapter} from './adapters/postgres';
 import {addGitHook, HookAlreadyFoundError} from './git';
 import * as pg from 'pg';
@@ -109,7 +109,7 @@ yargs.command(
             });
             process.stdout.write(`Created ${chalk.cyan(path.join('.', '.merkelrc.json'))}\n`);
             if (initMetaNow) {
-                await DbAdapter.getFromUrl(argv.db).init();
+                await createAdapterFromUrl(argv.db).init();
             }
             // add git hook
             if (shouldAddGitHook) {
@@ -215,7 +215,7 @@ yargs.command(
     { db: dbOption },
     async (argv: StatusArgv) => {
         try {
-            const adapter = DbAdapter.getFromUrl(argv.db);
+            const adapter = createAdapterFromUrl(argv.db);
             await adapter.init();
             const head = await getHead();
             await getStatus(adapter, head, argv.migrationDir);
@@ -247,7 +247,7 @@ yargs.command(
     },
     async (argv: MigrateArgv) => {
         try {
-            const adapter = DbAdapter.getFromUrl(argv.db);
+            const adapter = createAdapterFromUrl(argv.db);
             await adapter.init();
             const head = await getHead();
             const status = await getStatus(adapter, head, argv.migrationDir);
