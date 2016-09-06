@@ -24,7 +24,7 @@ build_script:
   - npm run build
 
 before_test:
-  - "C:\Program Files\PostgreSQL\9.3\bin\psql -c 'CREATE DATABASE merkel_test;' -U postgres"
+  - 'C:\Program Files\PostgreSQL\9.3\bin\psql -c "CREATE DATABASE merkel_test;" -U postgres'
 
 test_script:
   - npm test
