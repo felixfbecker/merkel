@@ -20,7 +20,7 @@ install:
   - npm install
   - node_modules\.bin\typings install
 
-build:
+build_script:
   - npm run build
 
 before_test:
