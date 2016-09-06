@@ -52,7 +52,6 @@ describe.only('E2E', () => {
             await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`], {env: {PATH}});
             const status = await getStatus(adapter, await getHead(), 'migrations');
             assert.equal(status.newCommits.length, 1);
-            await execFile('npm', ['i', 'pg']);
             await status.executePendingTasks('migrations', adapter);
             const {rows} = await client.query(`SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'new_table'`);
             assert.equal(rows.length, 1);
