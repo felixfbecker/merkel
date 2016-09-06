@@ -19,6 +19,8 @@ install:
 
 before_script:
  - psql -c 'CREATE DATABASE merkel_test;' -U postgres
+ - git config --global user.email 'whatever@whatever.com'
+ - git config --global user.name 'whatever'
 
 script:
  - npm run build
