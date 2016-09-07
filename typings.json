@@ -5,7 +5,6 @@
     "del": "registry:npm/del#2.2.0+20160416211512",
     "globby": "registry:npm/globby#3.0.0+20160723033700",
     "inquirer": "registry:npm/inquirer#1.0.0+20160723033700",
-    "lodash": "registry:npm/lodash#4.0.0+20160723033700",
     "mkdirp": "registry:npm/mkdirp#0.5.0+20160723033700",
     "node-uuid": "registry:npm/node-uuid#1.4.7+20160723033700",
     "pg": "registry:npm/pg#6.0.2+20160802225752",
