@@ -2,7 +2,7 @@
 import {getNewCommits, Commit, CommitSequence} from './git';
 import {DbAdapter} from './adapter';
 import {Task} from './migration';
-import {isRevertCommit, getTasksForNewCommit} from './git';
+import {isRevertCommit, getTasksForNewCommit, getHead} from './git';
 import * as chalk from 'chalk';
 import * as fs from 'mz/fs';
 import * as path from 'path';
@@ -85,8 +85,13 @@ export class Status {
 
 /**
  * Returns an object with information about the current status of the repository
+ * @param adapter the database adapter to use. Create one with [[createAdapterFromUrl]]
+ * @param head The current HEAD commit. If not given, will ask git
  */
-export async function getStatus(adapter: DbAdapter, head: Commit, migrationDir: string): Promise<Status> {
+export async function getStatus(adapter: DbAdapter, head?: Commit): Promise<Status> {
+    if (!head) {
+        head = await getHead();
+    }
     const status = new Status();
     status.lastTask = await adapter.getLastMigrationTask();
     status.head = head;
