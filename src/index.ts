@@ -9,6 +9,11 @@ import * as path from 'path';
 import * as uuid from 'node-uuid';
 import mkdirp = require('mkdirp');
 
+export * from './git';
+export * from './migration';
+export * from './adapter';
+export * from './adapters/postgres';
+
 /* istanbul ignore next */
 const DEFAULT_LOGGER: Logger = {
     log: (): void => undefined,
