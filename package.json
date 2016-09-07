@@ -1,6 +1,6 @@
 {
   "name": "merkel",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Handles your database migration crisis",
   "engines": {
     "node": ">=6"
