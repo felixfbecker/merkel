@@ -5,3 +5,4 @@ typedoc/
 .vscode/
 coverage/
 .nyc_output/
+migrations/
