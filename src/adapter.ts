@@ -59,6 +59,7 @@ export function createAdapterFromUrl(url: string): DbAdapter {
             try {
                 return new PostgresAdapter(url, require(process.cwd() + '/node_modules/pg'));
             } catch (err) {
+                /* istanbul ignore next */
                 return new PostgresAdapter(url, require('pg'));
             }
         case null: throw new InvalidConnectionError(url);
