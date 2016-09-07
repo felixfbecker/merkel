@@ -257,25 +257,27 @@ yargs.command(
             const head = await getHead();
             const status = await getStatus(adapter, head, argv.migrationDir);
             process.stdout.write(status.toString());
-            if (argv.confirm) {
-                const answer = await inquirer.prompt({ type: 'confirm', name: 'continue', message: 'Continue?' });
-                if (!answer['continue']) {
-                    process.exit(0);
+            if (status.newCommits.some(commit => commit.tasks.length > 0)) {
+                if (argv.confirm) {
+                    const answer = await inquirer.prompt({ type: 'confirm', name: 'continue', message: 'Continue?' });
+                    if (!answer['continue']) {
+                        process.exit(0);
+                    }
+                    process.stdout.write('\n');
                 }
-                process.stdout.write('\n');
-            }
-            process.stdout.write('Starting migration\n\n');
-            for (const commit of status.newCommits) {
-                process.stdout.write(`${chalk.yellow(commit.shortSha1)} ${commit.subject}\n`);
-                for (const task of commit.tasks) {
-                    process.stdout.write(task.toString() + ' ...');
-                    const interval = setInterval(() => process.stdout.write('.'), 100);
-                    await task.execute(argv.migrationOutDir, adapter, head, commit);
-                    clearInterval(interval);
-                    process.stdout.write(' Success\n');
+                process.stdout.write('Starting migration\n\n');
+                for (const commit of status.newCommits) {
+                    process.stdout.write(`${chalk.yellow(commit.shortSha1)} ${commit.subject}\n`);
+                    for (const task of commit.tasks) {
+                        process.stdout.write(task.toString() + ' ...');
+                        const interval = setInterval(() => process.stdout.write('.'), 100);
+                        await task.execute(argv.migrationOutDir, adapter, head, commit);
+                        clearInterval(interval);
+                        process.stdout.write(' Success\n');
+                    }
                 }
+                process.stdout.write(chalk.green('\nAll migrations successful\n'));
             }
-            process.stdout.write(chalk.green('\nAll migrations successful\n'));
             process.exit(0);
         } catch (err) {
             process.stderr.write('\n' + chalk.red(err.stack));
