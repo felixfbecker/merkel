@@ -31,7 +31,7 @@ export class Status {
     public async executePendingTasks(migrationDir: string, adapter: DbAdapter, logger: Logger = DEFAULT_LOGGER): Promise<void> {
         logger.log('Starting migration\n\n');
         for (const commit of this.newCommits) {
-            logger.log(`${chalk.yellow(commit.shortSha1)} ${commit.subject}\n`);
+            logger.log(`${chalk.yellow.bold(commit.shortSha1)} ${commit.subject}\n`);
             for (const task of commit.tasks) {
                 logger.log(task.toString() + '...');
                 /* istanbul ignore next */

@@ -61,7 +61,7 @@ export class Commit {
     }
 
     public toString(): string {
-        return chalk.yellow(this.shortSha1) + ' ' + (this.subject ? this.subject : '<unknown commit>');
+        return chalk.yellow.bold(this.shortSha1) + ' ' + (this.subject ? this.subject : '<unknown commit>');
     }
 }
 
