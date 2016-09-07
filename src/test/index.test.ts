@@ -19,7 +19,7 @@ import {execFile} from 'mz/child_process';
 
 const repo = path.join(tmpdir(), 'merkel_test_api');
 
-describe('API', () => {
+describe('index', () => {
     before(async () => {
         try {
             await fs.access(repo);
