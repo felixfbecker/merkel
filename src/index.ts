@@ -189,7 +189,7 @@ export class MigrationAlreadyExistsError extends Error {
 /**
  * Generates a new migration file
  */
-export async function generate(options: GenerateOptions, logger: Logger = DEFAULT_LOGGER) {
+export async function generate(options: GenerateOptions, logger: Logger = DEFAULT_LOGGER): Promise<string> {
     options.name = options.name || uuid.v1();
     let template: string;
     let ext: string = '';
@@ -255,4 +255,5 @@ export async function generate(options: GenerateOptions, logger: Logger = DEFAUL
     await new Promise((resolve, reject) => mkdirp(options.migrationDir, err => err ? reject(err) : resolve()));
     await fs.writeFile(file, template);
     logger.log('\nCreated ' + chalk.cyan(relativePath + path.sep + options.name + ext) + '\n');
+    return options.name;
 }

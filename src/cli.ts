@@ -196,7 +196,9 @@ yargs.command(
     },
     async (argv: PrepareCommitMsgArgv) => {
         try {
-            await prepareCommitMsg(argv.msgfile, argv.migrationDir, CLI_LOGGER);
+            if (argv.source !== 'message') {
+                await prepareCommitMsg(argv.msgfile, argv.migrationDir, CLI_LOGGER);
+            }
             process.exit(0);
         } catch (err) {
             process.stderr.write(chalk.red(err.stack));

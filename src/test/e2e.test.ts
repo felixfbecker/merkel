@@ -27,6 +27,7 @@ describe('E2E', () => {
         }
         process.chdir(repo);
         await del('*', <any>{dot: true});
+        await exec('npm i pg');
     });
     it('should behave properly', async () =>  {
         const adapter = createAdapterFromUrl(process.env.MERKEL_DB);
@@ -38,20 +39,15 @@ describe('E2E', () => {
             migrationOutDir: 'migrations'
         });
         await addGitHook();
-        await generate({
-            migrationDir: 'migrations'
-        });
-        const files = (await fs.readdir('migrations')).filter(item => item !== '.' && item !== '..');
-        const file = 'migrations/' + files[0];
-        const uuid = files[0].replace('.js', '');
+        const uuid = await generate({ migrationDir: 'migrations' });
+        const file = `migrations/${uuid}.js`;
         await fs.access(file).catch(() => new AssertionError({message: 'migration file not created'}));
         await fs.writeFile('User.ts', 'class User {}');
         await fs.writeFile(file, await fs.readFile(__dirname + '/migrations/test_migration.js'));
         await execFile('git', ['config', 'user.email', 'whatever@whatever.com']);
         await execFile('git', ['config', 'user.name', 'whatever']);
-        await execFile('git', ['add', '.']);
+        await execFile('git', ['add', file, 'User.ts']);
         await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`], {env: {PATH}});
-        await exec('npm i pg');
         const status = await getStatus(adapter, await getHead(), 'migrations');
         assert.equal(status.newCommits.length, 1);
         await status.executePendingTasks('migrations', adapter);
@@ -60,7 +56,7 @@ describe('E2E', () => {
         await execFile('git', ['revert', '--no-commit', 'HEAD']);
         await execFile('git', ['reset', 'HEAD', 'migrations']);
         await execFile('git', ['checkout', '--', 'migrations']);
-        await execFile('git', ['commit', '-m', `Rollback on User\n\n[merkel down ${uuid}]`], {env: {PATH}});
+        await execFile('git', ['commit', '-m', `Revert of User\n\n[merkel down ${uuid}]`], {env: {PATH}});
         const downStatus = await getStatus(adapter, await getHead(), 'migrations');
         assert.equal(downStatus.newCommits.length, 1);
         await downStatus.executePendingTasks('migrations', adapter);
