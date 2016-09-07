@@ -10,7 +10,7 @@
     "url": "https://github.com/felixfbecker/merkel"
   },
   "bin": "./bin/merkel",
-  "main": "./dist/index.ts",
+  "main": "./dist/index.js",
   "typings": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc -p .",
