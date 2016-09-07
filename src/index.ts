@@ -15,10 +15,16 @@ export * from './adapter';
 export * from './adapters/postgres';
 
 /* istanbul ignore next */
-const CLI_LOGGER: Logger = {
+export const CLI_LOGGER: Logger = {
     log: (log: string) => process.stdout.write(log),
     error: (log: string) => process.stderr.write(log),
     warn: (log: string) => process.stderr.write(log)
+};
+
+export const SILENT_LOGGER: Logger = {
+    log: (): void => undefined,
+    warn: (): void => undefined,
+    error: (): void => undefined
 };
 
 export class Status {

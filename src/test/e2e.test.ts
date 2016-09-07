@@ -1,6 +1,6 @@
 import {tmpdir} from 'os';
 import {execFile, exec} from 'mz/child_process';
-import {createConfig, createMigrationDir, generate, getStatus} from '../index';
+import {createConfig, createMigrationDir, generate, getStatus, SILENT_LOGGER} from '../index';
 import {createAdapterFromUrl} from '../adapter';
 import {addGitHook, getHead} from '../git';
 import * as fs from 'mz/fs';
@@ -39,7 +39,7 @@ describe('E2E', () => {
             migrationOutDir: 'migrations'
         });
         await addGitHook();
-        const uuid = await generate({ migrationDir: 'migrations' });
+        const uuid = await generate({ migrationDir: 'migrations' }, SILENT_LOGGER);
         const file = `migrations/${uuid}.js`;
         await fs.access(file).catch(() => new AssertionError({message: 'migration file not created'}));
         await fs.writeFile('User.ts', 'class User {}');
@@ -50,7 +50,7 @@ describe('E2E', () => {
         await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`], {env: {PATH}});
         const status = await getStatus(adapter, await getHead());
         assert.equal(status.newCommits.length, 1);
-        await status.executePendingTasks('migrations', adapter);
+        await status.executePendingTasks('migrations', adapter, SILENT_LOGGER);
         const {rows} = await client.query(`SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'new_table'`);
         assert.equal(rows.length, 1);
         await execFile('git', ['revert', '--no-commit', 'HEAD']);
@@ -59,7 +59,7 @@ describe('E2E', () => {
         await execFile('git', ['commit', '-m', `Revert of User\n\n[merkel down ${uuid}]`], {env: {PATH}});
         const downStatus = await getStatus(adapter, await getHead());
         assert.equal(downStatus.newCommits.length, 1);
-        await downStatus.executePendingTasks('migrations', adapter);
+        await downStatus.executePendingTasks('migrations', adapter, SILENT_LOGGER);
         const response = await client.query(`SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'new_table'`);
         assert.equal(response.rows.length, 0);
     });

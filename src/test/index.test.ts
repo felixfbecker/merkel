@@ -5,7 +5,8 @@ import {
     MigrationAlreadyExistsError,
     createMigrationDir,
     prepareCommitMsg,
-    Status
+    Status,
+    SILENT_LOGGER
 } from '../index';
 import {Task, TaskList, Migration} from '../migration';
 import {Commit, CommitSequence} from '../git';
@@ -26,7 +27,7 @@ describe('API', () => {
             await fs.mkdir(repo);
         }
         process.chdir(repo);
-        await del('*', <any>{dot: true});
+        await del('*', <any>{ dot: true });
     });
     describe('isMerkelRepository', () => {
         it('should find merkel repositorys by the .merkelrc.json', async () => {
@@ -40,7 +41,7 @@ describe('API', () => {
     });
     describe('generate', () => {
         beforeEach(async () => {
-            await del('*', <any>{dot: true});
+            await del('*', <any>{ dot: true });
         });
         it('should generate typescript when tsconfig.json is present', async () => {
             await fs.writeFile('tsconfig.json', `
@@ -50,10 +51,7 @@ describe('API', () => {
                     }
                 }
             `);
-            await generate({
-                migrationDir: 'test',
-                name: 'test'
-            });
+            await generate({ migrationDir: 'test', name: 'test' }, SILENT_LOGGER);
             const content = await fs.readFile('test/test.ts', 'utf8');
             assert(content.includes('async'), 'no typescript migration was created.');
         });
@@ -65,18 +63,12 @@ describe('API', () => {
                     }
                 }
             `);
-            await generate({
-                migrationDir: 'test',
-                name: 'test'
-            });
+            await generate({ migrationDir: 'test', name: 'test' }, SILENT_LOGGER);
             const content = await fs.readFile('test/test.ts', 'utf8');
             assert(!content.includes('async'), 'async keyword was used for target < ES6.');
         });
         it('should generate javascript when no tsconfig.json is present', async () => {
-            await generate({
-                migrationDir: 'test',
-                name: 'test'
-            });
+            await generate({ migrationDir: 'test', name: 'test' }, SILENT_LOGGER);
             try {
                 await fs.access('test/test.js');
             } catch (err) {
@@ -95,7 +87,7 @@ describe('API', () => {
                 migrationDir: 'test',
                 name: 'test.js',
                 template: 'template.js'
-            });
+            }, SILENT_LOGGER);
             const content = await fs.readFile('test/test.js', 'utf8');
             assert.equal(content, template);
         });
@@ -109,7 +101,7 @@ describe('API', () => {
                 await generate({
                     migrationDir: 'test',
                     name: 'test'
-                });
+                }, SILENT_LOGGER);
                 throw new assert.AssertionError({
                     message: 'it did not throw although migration was already present'
                 });
@@ -125,12 +117,12 @@ describe('API', () => {
                 migrationDir: 'test',
                 name: 'test',
                 template: 'none'
-            });
+            }, SILENT_LOGGER);
         });
     });
     describe('generateCommitMsg', () => {
         beforeEach(async () => {
-            await del('*', <any>{dot: true});
+            await del('*', <any>{ dot: true });
         });
         it('should warn if is a revert commit', async () => {
             await execFile('git', ['init']);
@@ -161,12 +153,12 @@ describe('API', () => {
         describe('toString', () => {
             it('should print the repositories current status', () => {
                 const status = new Status();
-                status.head = new Commit({sha1: '0c0302301'});
+                status.head = new Commit({ sha1: '0c0302301' });
                 status.newCommits = new CommitSequence();
                 const tasks = new TaskList();
                 tasks.push(new Task({
                     type: 'up',
-                    migration: new Migration({name: 'user'})
+                    migration: new Migration({ name: 'user' })
                 }));
                 const commit = new Commit({
                     sha1: '0c0302301',
@@ -181,7 +173,7 @@ describe('API', () => {
             });
             it('should print the last task', () => {
                 const status = new Status();
-                status.head = new Commit({sha1: '0c0302301', message: 'top'});
+                status.head = new Commit({ sha1: '0c0302301', message: 'top' });
                 status.lastTask = new Task({
                     type: 'up',
                     appliedAt: new Date(0),
@@ -193,7 +185,7 @@ describe('API', () => {
                         sha1: '9991920',
                         message: 'header'
                     }),
-                    migration: new Migration({name: 'user'})
+                    migration: new Migration({ name: 'user' })
                 });
                 status.newCommits = new CommitSequence();
                 const output = status.toString();
@@ -207,6 +199,6 @@ describe('API', () => {
         });
     });
     after(async () => {
-        await del('*', <any>{dot: true});
+        await del('*', <any>{ dot: true });
     });
 });
