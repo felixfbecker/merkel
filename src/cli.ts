@@ -4,7 +4,7 @@ import * as fs from 'mz/fs';
 import * as chalk from 'chalk';
 import {getHead} from './git';
 import {TaskType, Task, Migration} from './migration';
-import {getStatus, generate, prepareCommitMsg, isMerkelRepository, createConfig, createMigrationDir} from './index';
+import {Logger, getStatus, generate, prepareCommitMsg, isMerkelRepository, createConfig, createMigrationDir} from './index';
 import * as path from 'path';
 import * as tty from 'tty';
 import * as inquirer from 'inquirer';
@@ -13,6 +13,12 @@ import {addGitHook, HookAlreadyFoundError} from './git';
 const pkg = require('../package.json');
 require('update-notifier')({ pkg }).notify();
 
+const CLI_LOGGER: Logger = {
+    log: (log: string) => process.stdout.write(log),
+    error: (log: string) => process.stderr.write(log),
+    warn: (log: string) => process.stderr.write(log)
+};
+
 interface Config {
     migrationDir?: string;
     migrationOutDir?: string;
@@ -20,7 +26,7 @@ interface Config {
 
 interface Argv extends yargs.Argv, Config { }
 
-const dbOption = {
+const dbOption: yargs.Options = {
     description: 'The connection URL for the database',
     nargs: 1,
     require: true
@@ -28,7 +34,7 @@ const dbOption = {
 
 yargs
     .env('MERKEL')
-    .option('config', { config: true, default: '.merkelrc.json' })
+    .option('config', { alias: 'c', global: true, config: true, default: '.merkelrc.json' })
     .demand(1)
     .usage('\nUsage: merkel [options] <command>')
     .wrap(90)
@@ -59,7 +65,7 @@ interface InitArgv extends Argv {
 yargs.command(
     'init',
     'Initializes merkel configuration interactively',
-    { db: Object.assign(dbOption, { require: false }) },
+    { db: Object.assign({}, dbOption, { require: false }) },
     async (argv: InitArgv) => {
         try {
             process.stdout.write('\n');
@@ -83,7 +89,7 @@ yargs.command(
                 {
                     name: 'migrationOutDir',
                     message: 'Directory for compiled migration files:',
-                    default: (tsconfig && tsconfig.compilerOptions && tsconfig.compilerOptions.outDir && tsconfig.compilerOptions.rootDir + path.sep + 'migrations') || './migrations',
+                    default: (tsconfig && tsconfig.compilerOptions && tsconfig.compilerOptions.outDir && tsconfig.compilerOptions.outDir + path.sep + 'migrations') || './migrations',
                     when: () => !!tsconfig
                 },
                 {
@@ -190,11 +196,7 @@ yargs.command(
     },
     async (argv: PrepareCommitMsgArgv) => {
         try {
-            prepareCommitMsg(argv.msgfile, argv.migrationDir, {
-                log: process.stdout.write,
-                error: process.stderr.write,
-                warn: process.stderr.write
-            });
+            await prepareCommitMsg(argv.msgfile, argv.migrationDir, CLI_LOGGER);
             process.exit(0);
         } catch (err) {
             process.stderr.write(chalk.red(err.stack));
@@ -216,8 +218,11 @@ yargs.command(
             const adapter = createAdapterFromUrl(argv.db);
             await adapter.init();
             const head = await getHead();
-            await getStatus(adapter, head, argv.migrationDir);
-            process.stdout.write(`\n\nRun ${chalk.white.bold('merkel migrate')} to execute\n`);
+            const status = await getStatus(adapter, head, argv.migrationDir);
+            process.stdout.write('\n' + status.toString());
+            if (status.newCommits.some(commit => commit.tasks.length > 0)) {
+                process.stdout.write(`Run ${chalk.white.bold('merkel migrate')} to execute\n`);
+            }
             process.exit(0);
         } catch (err) {
             process.stderr.write(chalk.red(err.stack));
@@ -249,7 +254,7 @@ yargs.command(
             await adapter.init();
             const head = await getHead();
             const status = await getStatus(adapter, head, argv.migrationDir);
-            process.stdout.write(status.toString() + '\n\n');
+            process.stdout.write(status.toString());
             if (argv.confirm) {
                 const answer = await inquirer.prompt({ type: 'confirm', name: 'continue', message: 'Continue?' });
                 if (!answer['continue']) {
@@ -261,7 +266,7 @@ yargs.command(
             for (const commit of status.newCommits) {
                 process.stdout.write(`${chalk.yellow(commit.shortSha1)} ${commit.subject}\n`);
                 for (const task of commit.tasks) {
-                    process.stdout.write(task.toString() + '...');
+                    process.stdout.write(task.toString() + ' ...');
                     const interval = setInterval(() => process.stdout.write('.'), 100);
                     await task.execute(argv.migrationOutDir, adapter, head, commit);
                     clearInterval(interval);
@@ -288,11 +293,8 @@ function migrationCommand(type: TaskType) {
             await adapter.init();
             const head = await getHead();
             for (const name of argv.migrations) {
-                const task = new Task({
-                    type: 'up',
-                    migration: new Migration({ name })
-                });
-                process.stdout.write(`Executing ${task.toString()}...`);
+                const task = new Task({ type, migration: new Migration({ name }) });
+                process.stdout.write(`${task.toString()} ...`);
                 const interval = setInterval(() => process.stdout.write('.'), 100);
                 await task.execute(argv.migrationOutDir, adapter, head);
                 clearInterval(interval);
@@ -300,7 +302,7 @@ function migrationCommand(type: TaskType) {
             }
             process.stdout.write('\n' + chalk.green.bold('Migration successful') + '\n');
         } catch (err) {
-            process.stderr.write(chalk.red('\nError: ' + err.stack));
+            process.stderr.write('\n' + chalk.red(err.stack));
             process.exit(1);
         }
         process.exit(0);
@@ -331,8 +333,7 @@ yargs.command('generate', 'Generates a new migration file', {
 }, async (argv: GenerateArgv) => {
     try {
         const migrationDir = path.resolve(argv.migrationDir);
-        generate({name: argv.name, migrationDir: migrationDir, template: argv.template},
-        {log: process.stdout.write, error: process.stderr.write, warn: process.stderr.write});
+        await generate({ name: argv.name, migrationDir, template: argv.template }, CLI_LOGGER);
         process.exit(0);
     } catch (err) {
         process.stderr.write(chalk.red(err.stack));

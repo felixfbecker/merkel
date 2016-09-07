@@ -10,7 +10,7 @@ import * as uuid from 'node-uuid';
 import mkdirp = require('mkdirp');
 
 /* istanbul ignore next */
-const DEFAULT_LOGGER = {
+const DEFAULT_LOGGER: Logger = {
     log: (): void => undefined,
     warn: (): void => undefined,
     error: (): void => undefined
@@ -56,7 +56,7 @@ export class Status {
             str += `Last migration:      No migration run yet\n`;
         }
         if (this.head) {
-            str += chalk.grey(`                        ${this.newCommits.length === 1 ? '‖' : `${this.newCommits.isReversed ? '↑' : '↓'} ${this.newCommits.length - 1} commit${this.newCommits.length > 2 ? 's' : ''}\n`}`);
+            str += chalk.grey(`                        ${this.newCommits.length === 0 ? '‖' : `${this.newCommits.isReversed ? '↑' : '↓'} ${this.newCommits.length} commit${this.newCommits.length > 1 ? 's' : ''}`}\n`);
             str += `Current HEAD:        ${this.head.toString()}\n`;
         }
         str += '\n';
@@ -177,7 +177,7 @@ export async function prepareCommitMsg(msgfile: string, migrationDir: string, lo
     }
     // add commands
     const taskList = await getTasksForNewCommit(migrationDir);
-    await fs.appendFile(msgfile, taskList.toString(true));
+    await fs.appendFile(msgfile, '\n' + taskList.toString(true));
 }
 
 export class MigrationAlreadyExistsError extends Error {
