@@ -21,6 +21,7 @@ export const CLI_LOGGER: Logger = {
     warn: (log: string) => process.stderr.write(log)
 };
 
+/* istanbul ignore next */
 export const SILENT_LOGGER: Logger = {
     log: (): void => undefined,
     warn: (): void => undefined,
