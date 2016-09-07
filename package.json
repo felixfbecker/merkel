@@ -11,6 +11,7 @@
   },
   "bin": "./bin/merkel",
   "main": "./dist/index.ts",
+  "typings": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc -p .",
     "watch": "tsc -w -p .",
