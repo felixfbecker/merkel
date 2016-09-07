@@ -48,7 +48,7 @@ describe('E2E', () => {
         await execFile('git', ['config', 'user.name', 'whatever']);
         await execFile('git', ['add', file, 'User.ts']);
         await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`], {env: {PATH}});
-        const status = await getStatus(adapter, await getHead(), 'migrations');
+        const status = await getStatus(adapter, await getHead());
         assert.equal(status.newCommits.length, 1);
         await status.executePendingTasks('migrations', adapter);
         const {rows} = await client.query(`SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'new_table'`);
@@ -57,7 +57,7 @@ describe('E2E', () => {
         await execFile('git', ['reset', 'HEAD', 'migrations']);
         await execFile('git', ['checkout', '--', 'migrations']);
         await execFile('git', ['commit', '-m', `Revert of User\n\n[merkel down ${uuid}]`], {env: {PATH}});
-        const downStatus = await getStatus(adapter, await getHead(), 'migrations');
+        const downStatus = await getStatus(adapter, await getHead());
         assert.equal(downStatus.newCommits.length, 1);
         await downStatus.executePendingTasks('migrations', adapter);
         const response = await client.query(`SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'new_table'`);

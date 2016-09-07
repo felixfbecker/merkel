@@ -4,7 +4,7 @@ import * as fs from 'mz/fs';
 import * as chalk from 'chalk';
 import {getHead} from './git';
 import {TaskType, Task, Migration} from './migration';
-import {Logger, getStatus, generate, prepareCommitMsg, isMerkelRepository, createConfig, createMigrationDir} from './index';
+import {getStatus, generate, prepareCommitMsg, isMerkelRepository, createConfig, createMigrationDir} from './index';
 import * as path from 'path';
 import * as tty from 'tty';
 import * as inquirer from 'inquirer';
@@ -12,12 +12,6 @@ import {createAdapterFromUrl} from './adapter';
 import {addGitHook, HookAlreadyFoundError} from './git';
 const pkg = require('../package.json');
 require('update-notifier')({ pkg }).notify();
-
-const CLI_LOGGER: Logger = {
-    log: (log: string) => process.stdout.write(log),
-    error: (log: string) => process.stderr.write(log),
-    warn: (log: string) => process.stderr.write(log)
-};
 
 interface Config {
     migrationDir?: string;
@@ -197,7 +191,7 @@ yargs.command(
     async (argv: PrepareCommitMsgArgv) => {
         try {
             if (argv.source !== 'message') {
-                await prepareCommitMsg(argv.msgfile, argv.migrationDir, CLI_LOGGER);
+                await prepareCommitMsg(argv.msgfile, argv.migrationDir);
             }
             process.exit(0);
         } catch (err) {
@@ -220,7 +214,7 @@ yargs.command(
             const adapter = createAdapterFromUrl(argv.db);
             await adapter.init();
             const head = await getHead();
-            const status = await getStatus(adapter, head, argv.migrationDir);
+            const status = await getStatus(adapter, head);
             process.stdout.write('\n' + status.toString());
             if (status.newCommits.some(commit => commit.tasks.length > 0)) {
                 process.stdout.write(`Run ${chalk.white.bold('merkel migrate')} to execute\n`);
@@ -255,7 +249,7 @@ yargs.command(
             const adapter = createAdapterFromUrl(argv.db);
             await adapter.init();
             const head = await getHead();
-            const status = await getStatus(adapter, head, argv.migrationDir);
+            const status = await getStatus(adapter, head);
             process.stdout.write(status.toString());
             if (status.newCommits.some(commit => commit.tasks.length > 0)) {
                 if (argv.confirm) {
@@ -337,7 +331,7 @@ yargs.command('generate', 'Generates a new migration file', {
 }, async (argv: GenerateArgv) => {
     try {
         const migrationDir = path.resolve(argv.migrationDir);
-        await generate({ name: argv.name, migrationDir, template: argv.template }, CLI_LOGGER);
+        await generate({ name: argv.name, migrationDir, template: argv.template });
         process.exit(0);
     } catch (err) {
         process.stderr.write(chalk.red(err.stack));

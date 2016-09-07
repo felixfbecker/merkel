@@ -15,10 +15,10 @@ export * from './adapter';
 export * from './adapters/postgres';
 
 /* istanbul ignore next */
-const DEFAULT_LOGGER: Logger = {
-    log: (): void => undefined,
-    warn: (): void => undefined,
-    error: (): void => undefined
+const CLI_LOGGER: Logger = {
+    log: (log: string) => process.stdout.write(log),
+    error: (log: string) => process.stderr.write(log),
+    warn: (log: string) => process.stderr.write(log)
 };
 
 export class Status {
@@ -33,7 +33,7 @@ export class Status {
     public newCommits: CommitSequence;
 
     /** Executes all tasks for newCommits */
-    public async executePendingTasks(migrationDir: string, adapter: DbAdapter, logger: Logger = DEFAULT_LOGGER): Promise<void> {
+    public async executePendingTasks(migrationDir: string, adapter: DbAdapter, logger: Logger = CLI_LOGGER): Promise<void> {
         logger.log('Starting migration\n\n');
         for (const commit of this.newCommits) {
             logger.log(`${chalk.yellow.bold(commit.shortSha1)} ${commit.subject}\n`);
@@ -179,7 +179,7 @@ export async function createConfig(config: MerkelConfiguration) {
  * Prepares a commit message for git by adding merkel commands to it.
  * @param msgfile The path to the file with the commit message
  */
-export async function prepareCommitMsg(msgfile: string, migrationDir: string, logger: Logger = DEFAULT_LOGGER) {
+export async function prepareCommitMsg(msgfile: string, migrationDir: string, logger: Logger = CLI_LOGGER) {
     let msg = await fs.readFile(msgfile, 'utf8');
     // check that migrations have not been deleted by a revert
     if (isRevertCommit(msg)) {
@@ -199,7 +199,7 @@ export class MigrationAlreadyExistsError extends Error {
 /**
  * Generates a new migration file
  */
-export async function generate(options: GenerateOptions, logger: Logger = DEFAULT_LOGGER): Promise<string> {
+export async function generate(options: GenerateOptions, logger: Logger = CLI_LOGGER): Promise<string> {
     options.name = options.name || uuid.v1();
     let template: string;
     let ext: string = '';
