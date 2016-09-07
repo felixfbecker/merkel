@@ -112,7 +112,7 @@ It is not recommended to save this in the `.merkelrc.json` file, as connection d
 To query the database, `merkel` needs a database driver.
 The driver is detected through the protocol part of the connection URI.
 In order to allow many dialects, it is not a dependency of `merkel`, but instead `require`d from the current working
-directory, which means you need one installed in your project (you probably already have). See supported dialects.
+directory, which means you need one installed in your project (you probably already have). See [supported dialects](#supported-dialects).
 
 `merkel` then asks `git` which commits were made since then the last migration.
 It then scans the new commits for the `merkel` commands like you saw in the example above.
@@ -201,6 +201,10 @@ You can use merkel programatically, for example in your favourite task runner.
 API documentation is available [here](http://merkel.surge.sh/).
 
 TypeScript definitions are included.
+
+## Supported dialects
+
+Currently only PostgreSQL. [pg](https://github.com/brianc/node-postgres) version ^6 must be installed in your project.
 
 
 ---------------------------------------------------------------------
