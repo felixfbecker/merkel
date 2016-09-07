@@ -201,7 +201,7 @@ describe('API', () => {
                 assert(output.includes('Thu Jan 01 1970'));
                 assert(output.includes('initial'));
                 assert(output.includes('header'));
-                assert(output.includes('↓ -1 commit'));
+                assert(output.includes('‖'));
                 assert(output.includes('top'));
             });
         });
