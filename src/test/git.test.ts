@@ -9,8 +9,12 @@ import {
     getTasksForNewCommit,
     CommitSequence,
     HookAlreadyFoundError,
-    UnknownCommitError
+    UnknownCommitError,
+    getConfigurationForCommit
 } from '../git';
+import {
+    createConfig
+} from '../index';
 import {execFile} from 'mz/child_process';
 import * as assert from 'assert';
 import * as fs from 'mz/fs';
@@ -55,6 +59,41 @@ describe('git', () => {
             await addGitHook();
             const hook = await fs.readFile(path.join(process.cwd(), '.git/hooks/prepare-commit-msg'), 'utf8');
             assert(hook.includes('keep me'));
+        });
+    });
+    describe('getConfigurationForCommit', () => {
+        it('should get the configuration for every commit', async () => {
+            await createConfig({
+                migrationDir: 'migrations',
+                migrationOutDir: 'migrations'
+            });
+            await execFile('git', ['add', '.']);
+            await execFile('git', ['commit', '-m', 'initial commit']);
+            await createConfig({
+                migrationDir: 'src/migrations',
+                migrationOutDir: 'dist/migrations'
+            });
+            await execFile('git', ['add', '.']);
+            await execFile('git', ['commit', '-m', 'fixes migrations']);
+            const commits = await getNewCommits();
+            let config = await getConfigurationForCommit(commits[0]);
+            assert.equal(config.migrationDir, 'migrations');
+            assert.equal(config.migrationOutDir, 'migrations');
+            config = await getConfigurationForCommit(commits[1]);
+            assert.equal(config.migrationDir, 'src/migrations');
+            assert.equal(config.migrationOutDir, 'dist/migrations');
+        });
+        it('should return null if no merkelrc is in commit', async () => {
+            await fs.writeFile('test.js', 'const one = 1;');
+            await execFile('git', ['add', '.']);
+            await execFile('git', ['commit', '-m', 'initial commit']);
+            const head = await getHead();
+            assert.equal(await getConfigurationForCommit(head), null);
+            await createConfig({
+                migrationDir: 'migrations',
+                migrationOutDir: 'migrations'
+            });
+            assert.equal(await getConfigurationForCommit(head), null);
         });
     });
     describe('getNewCommits', () => {

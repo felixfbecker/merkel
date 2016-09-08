@@ -4,6 +4,7 @@ import * as chalk from 'chalk';
 import * as path from 'path';
 import * as fs from 'mz/fs';
 import {Migration, TaskType, Task, TaskList} from './migration';
+import {MerkelConfiguration} from './index';
 import {resolve, basename} from 'path';
 
 export class HookAlreadyFoundError extends Error {
@@ -113,6 +114,25 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     const commits = parseGitLog(output);
     commits.isReversed = headBehindLastMigration;
     return commits;
+}
+
+export async function getConfigurationForCommit(commit: Commit): Promise<MerkelConfiguration> {
+    if (commit.sha1) {
+        try {
+            const [merkelRc] = await execFile('git', ['show', `${commit.sha1}:.merkelrc.json`]);
+            const merkelConfig = JSON.parse(merkelRc.toString('utf-8'));
+            if (merkelConfig) {
+                return <MerkelConfiguration>merkelConfig;
+            }
+        } catch (err) {
+            /* istanbul ignore next */
+            if (~~err.code !== 128) {
+                throw err;
+            }
+            // no merkelrc in this commit
+        }
+    }
+    return null;
 }
 
 export async function addGitHook(): Promise<['appended' | 'created', string]> {

@@ -2,7 +2,7 @@
 import * as chalk from 'chalk';
 import {resolve, sep} from 'path';
 import {DbAdapter} from './adapter';
-import {Commit} from './git';
+import {Commit, getConfigurationForCommit} from './git';
 import * as fs from 'mz/fs';
 
 export type TaskType = 'up' | 'down';
@@ -126,10 +126,17 @@ export class Task {
 
     /**
      * Executes the task
+     * @param migrationDir the fallback folder to search the migration in if no merkelrc can be found
      */
     public async execute(migrationDir: string, adapter: DbAdapter, head: Commit, commit?: Commit): Promise<void> {
         await adapter.checkIfTaskCanExecute(this);
         let migrationExports: any;
+        if (commit) {
+            const config = await getConfigurationForCommit(commit);
+            if (config && config.migrationOutDir) {
+                migrationDir = config.migrationOutDir;
+            }
+        }
         try {
             const path = await this.migration.getPath(migrationDir);
             migrationExports = require(path);
