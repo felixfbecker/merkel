@@ -103,7 +103,7 @@ yargs.command(
             }
             createConfig({
                 migrationDir: <string>migrationDir,
-                migrationOutDir: <string>migrationOutDir
+                migrationOutDir: <string>migrationOutDir || './migrations'
             });
             process.stdout.write(`Created ${chalk.cyan(path.join('.', '.merkelrc.json'))}\n`);
             if (initMetaNow) {
