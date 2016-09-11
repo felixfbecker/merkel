@@ -108,8 +108,7 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     if (since) {
         args.push(headBehindLastMigration ? 'HEAD..' + since.sha1 : since.sha1 + '..HEAD');
     }
-    let stdout: Buffer;
-    [stdout] = await execFile('git', args);
+    const [stdout] = await execFile('git', args);
     const output = stdout.toString().trim();
     const commits = parseGitLog(output);
     commits.isReversed = headBehindLastMigration;
@@ -120,7 +119,7 @@ export async function getConfigurationForCommit(commit: Commit): Promise<MerkelC
     if (commit.sha1) {
         try {
             const [merkelRc] = await execFile('git', ['show', `${commit.sha1}:.merkelrc.json`]);
-            const merkelConfig = JSON.parse(merkelRc.toString('utf-8'));
+            const merkelConfig = JSON.parse(merkelRc);
             if (merkelConfig) {
                 return <MerkelConfiguration>merkelConfig;
             }
