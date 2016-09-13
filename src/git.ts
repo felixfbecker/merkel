@@ -192,9 +192,9 @@ export function parseGitLog(gitLog: string): CommitSequence {
 export async function getHead(): Promise<Commit> {
     try {
         const [stdout] = await execFile('git', ['rev-parse', 'HEAD']);
-        return new Commit({ sha1: stdout.toString().trim() });
+        return new Commit({ sha1: stdout.trim() });
     } catch (err) {
-        throw new NoCommitsError();
+        throw new NoCommitsError(err.message);
     }
 }
 
