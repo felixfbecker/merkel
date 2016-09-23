@@ -49,9 +49,9 @@ Like all options, they can also be set in `.merkelrc.json` or passed through env
 The name of the migration file can be set with `--name`. By default, a UUID is used.
 
 > **Why UUIDs?**  
-> In opposite to sequential IDs or timestamps, UUIDs allow seperate developers to write migration files without any
-> conflicts. There can be migration files introduced in seperate git branches or commits with migration files even
-> cherry-picked accross repositories, they will not create merge conflicts.
+> In opposite to sequential IDs or timestamps, UUIDs allow separate developers to write migration files without any
+> conflicts. There can be migration files introduced in separate git branches or commits with migration files even
+> cherry-picked across repositories, they will not create merge conflicts.
 > This works well with the distributed nature of git.
 > Providing a custom, unique name is equally good.
 
@@ -105,13 +105,13 @@ After checking out the new commit in Continuous Deployment or on a coworker's ma
 merkel will query the database's `merkel_meta` table for the last migration run, and what the `HEAD` was when that
 migration was run.
 
-To being able to do this, you must provide `merkel` with a database connection URI.
+To be able to do this, you must provide `merkel` with a database connection URI.
 You can do this either through the `--db` option or through the `MERKEL_DB` environment variable.
 It is not recommended to save this in the `.merkelrc.json` file, as connection data differs across environments.
 
 To query the database, `merkel` needs a database driver.
 The driver is detected through the protocol part of the connection URI.
-In order to allow many dialects, it is not a dependency of `merkel`, but instead `require`d from the current working
+In order to allow many dialects, it is not a dependency of `merkel`, but instead `required` from the current working
 directory, which means you need one installed in your project (you probably already have). See [supported dialects](#supported-dialects).
 
 `merkel` then asks `git` which commits were made since then the last migration.
@@ -132,7 +132,7 @@ Pending migrations:
 
 If a migration fails (throws an exception / returns a rejected promise), the schema your source files expect doesn't
 match your database schema anymore. You now have two options:
- - Quickly fix the migration file in a seperate commit.
+ - Quickly fix the migration file in a separate commit.
    That commit message should _not_ include any `merkel` command.
    The next `merkel migrate` execution will then start where it migration chain broke and will still run the migration
    files in the order they were specified in the commit messages, but with the newest version of the migration file.
@@ -147,7 +147,7 @@ invert. This means, if one of the commits added a migration file, it will now be
 Instead of deleting the migration files, you want to keep them, but let `merkel` migrate them _down_.
 
 To accomplish this, make sure to run `git revert` with the `--no-commit`/`-n` option.
-This will not make the commit immidietly, but only stage the proposed changes, allowing you to edit them.
+This will not make the commit immediately, but only stage the proposed changes, allowing you to edit them.
 
 Run `git status` to see if any migration files got deleted. If yes, you can unstage the whole migration dir with
 
@@ -178,7 +178,7 @@ The order is important here!
 
 #### Reverting a deployment with `git reset`
 
-Let's imagine you are using a `production` branch which always points to a specific commit on `master`, and regurarely
+Let's imagine you are using a `production` branch which always points to a specific commit on `master`, and regularly
 gets updated with `git reset` to point to a new or older commit.
 After you `git push --force`, the current `HEAD` will suddenly be _behind_ the last migration run in the database.
 `merkel` will detect this automatically, and run the migrations between `HEAD` and the last migrations _down_ and in
@@ -195,9 +195,9 @@ migration directory at the time the commit was made.
 
 If not, then this is not possible without using the ability to run old migrations.
 
-## Programatic usage
+## Programmatic usage
 
-You can use merkel programatically, for example in your favourite task runner.
+You can use merkel programmatically, for example in your favourite task runner.
 API documentation is available [here](http://merkel.surge.sh/).
 
 TypeScript definitions are included.
