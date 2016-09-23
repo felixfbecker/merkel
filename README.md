@@ -111,7 +111,7 @@ It is not recommended to save this in the `.merkelrc.json` file, as connection d
 
 To query the database, `merkel` needs a database driver.
 The driver is detected through the protocol part of the connection URI.
-In order to allow many dialects, it is not a dependency of `merkel`, but instead `required` from the current working
+In order to allow many dialects, it is not a dependency of `merkel`, but instead `require`d from the current working
 directory, which means you need one installed in your project (you probably already have). See [supported dialects](#supported-dialects).
 
 `merkel` then asks `git` which commits were made since then the last migration.
