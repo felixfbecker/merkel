@@ -6,7 +6,7 @@ import {isRevertCommit, getTasksForNewCommit, getHead} from './git';
 import * as chalk from 'chalk';
 import * as fs from 'mz/fs';
 import * as path from 'path';
-import * as uuid from 'node-uuid';
+import * as uuid from 'uuid';
 import mkdirp = require('mkdirp');
 
 export * from './git';
