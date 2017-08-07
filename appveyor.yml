@@ -22,6 +22,8 @@ build_script:
 
 before_test:
   - '"C:\Program Files\PostgreSQL\9.3\bin\psql" -c "CREATE DATABASE merkel_test;" -U postgres'
+  - git config --global user.email "you@example.com"
+  - git config --global user.name "Your Name"
 
 test_script:
   - npm test
