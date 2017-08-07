@@ -8,9 +8,6 @@ services:
 
 shallow_clone: true
 
-cache:
-  - node_modules
-
 environment:
   MERKEL_DB: postgres://postgres:Password12!@localhost:5432/merkel_test
   PGPASSWORD: Password12!
