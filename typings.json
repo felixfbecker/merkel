@@ -6,16 +6,16 @@
     "globby": "registry:npm/globby#3.0.0+20160723033700",
     "inquirer": "registry:npm/inquirer#1.0.0+20160723033700",
     "mkdirp": "registry:npm/mkdirp#0.5.0+20160723033700",
-    "mz": "registry:npm/mz#2.4.0+20160911015431",
+    "mz": "registry:npm/mz#2.4.0+20161114225638",
     "node-uuid": "registry:npm/node-uuid#1.4.7+20160723033700",
-    "pg": "registry:npm/pg#6.0.2+20160802225752",
+    "pg": "registry:npm/pg#6.0.2+20170314174547",
     "sinon": "registry:npm/sinon#1.16.0+20160723033700",
     "yargs": "registry:npm/yargs#5.0.0+20160907000723"
   },
   "globalDependencies": {
-    "node": "registry:env/node#6.0.0+20160902022231"
+    "node": "registry:env/node#6.0.0+20170213133316"
   },
   "globalDevDependencies": {
-    "mocha": "registry:env/mocha#2.2.5+20160723033700"
+    "mocha": "registry:env/mocha#2.2.5+20160926180742"
   }
 }
