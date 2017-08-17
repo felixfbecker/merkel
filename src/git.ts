@@ -68,7 +68,7 @@ export class Commit {
 
 async function hasHead(): Promise<Boolean> {
     try {
-        await execFile('git', ['show', 'HEAD']);
+        await execFile('git', ['rev-parse', '--verify', 'HEAD']);
         return true;
     } catch (err) {
         return false;

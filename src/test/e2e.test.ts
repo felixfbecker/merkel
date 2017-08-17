@@ -15,7 +15,8 @@ const PATH = path.resolve(__dirname + '/../../bin') + path.delimiter + process.e
 describe('E2E', () => {
     let client: pg.Client;
     const repo = tmpdir() + '/merkel_test_repo';
-    before(async () => {
+    before(async function () {
+        this.timeout(30000);
         client = new pg.Client(process.env.MERKEL_DB);
         await new Promise<void>((resolve, reject) => client.connect((err) => err ? reject(err) : resolve()));
         await client.query('DROP TABLE IF EXISTS "new_table"');
@@ -29,7 +30,8 @@ describe('E2E', () => {
         await del('*', <any>{dot: true});
         await exec('npm i pg');
     });
-    it('should behave properly', async () =>  {
+    it('should behave properly', async function () {
+        this.timeout(10000);
         const adapter = createAdapterFromUrl(process.env.MERKEL_DB);
         await adapter.init();
         await execFile('git', ['init']);
