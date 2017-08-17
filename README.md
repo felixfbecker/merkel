@@ -1,7 +1,6 @@
 
 # `merkel`
 
-[![Greenkeeper badge](https://badges.greenkeeper.io/felixfbecker/merkel.svg)](https://greenkeeper.io/)
 > _Handles your database migration crisis_
 
 [![Version](https://img.shields.io/npm/v/merkel.svg)](https://www.npmjs.com/package/merkel)
