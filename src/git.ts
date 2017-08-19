@@ -68,7 +68,7 @@ export class Commit {
 
 async function hasHead(): Promise<Boolean> {
     try {
-        await execFile('git', ['rev-parse', '--verify', 'HEAD']);
+        await execFile('git', ['show', '--format=%H', '--no-patch', 'HEAD']);
         return true;
     } catch (err) {
         return false;
@@ -82,7 +82,7 @@ async function hasHead(): Promise<Boolean> {
 export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     if (since) {
         try {
-            await execFile('git', ['show', since.sha1]);
+            await execFile('git', ['show', '--format=%H', '--no-patch', since.sha1]);
         } catch (err) {
             // the last migration head does not exist in this repository
             throw new UnknownCommitError(since);
