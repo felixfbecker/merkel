@@ -34,7 +34,6 @@
     "yargs": "^5.0.0"
   },
   "devDependencies": {
-    "codecov": "^1.0.1",
     "del": "^2.2.2",
     "mocha": "^3.0.2",
     "nyc": "^10.0.0",
