@@ -8,7 +8,8 @@
 [![Windows Build Status](https://ci.appveyor.com/api/projects/status/ycuaue3nmlstep78/branch/master?svg=true)](https://ci.appveyor.com/project/felixfbecker/merkel/branch/master)
 [![Coverage](https://codecov.io/gh/felixfbecker/merkel/branch/master/graph/badge.svg?token=BuoxrgBs54)](https://codecov.io/gh/felixfbecker/merkel)
 [![Dependency Status](https://gemnasium.com/badges/github.com/felixfbecker/merkel.svg)](https://gemnasium.com/github.com/felixfbecker/merkel)
-![Node Version](http://img.shields.io/node/v/merkel.svg)
+![Node Version](https://img.shields.io/node/v/merkel.svg)
+[![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
 [![License](https://img.shields.io/npm/l/merkel.svg)](https://github.com/felixfbecker/merkel/blob/master/LICENSE.txt)
 [![Gitter](https://badges.gitter.im/felixfbecker/merkel.svg)](https://gitter.im/felixfbecker/merkel?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
