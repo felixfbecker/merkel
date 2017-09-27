@@ -108,8 +108,8 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     if (since) {
         args.push(headBehindLastMigration ? 'HEAD..' + since.sha1 : since.sha1 + '..HEAD');
     }
-    const commits = await (new Promise<CommitSequence>(async (resolve, reject) => {
-        const gitProcess = await spawn('git', args);
+    const commits = await (new Promise<CommitSequence>((resolve, reject) => {
+        const gitProcess = spawn('git', args);
         let buffer = '';
         let parsedCommits = new CommitSequence();
         gitProcess.stdout.on('data', data => {
