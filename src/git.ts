@@ -124,10 +124,14 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
                 }
             }
         });
+        let errorBuffer = '';
+        gitProcess.stderr.on('data', data => {
+            errorBuffer += data.toString();
+        });
         gitProcess.on('error', reject);
         gitProcess.on('exit', code => {
             if (code !== 0) {
-                reject(new Error('git errored: ' + code));
+                reject(new Error(`git errored: ${code}\n${errorBuffer}`));
             }
             const parsedLog = parseGitLog(buffer);
             for (const commit of parsedLog) {
