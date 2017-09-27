@@ -108,7 +108,7 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     if (since) {
         args.push(headBehindLastMigration ? 'HEAD..' + since.sha1 : since.sha1 + '..HEAD');
     }
-    const commits = await (new Promise(async (resolve, reject) => {
+    const commits = await (new Promise<CommitSequence>(async (resolve, reject) => {
         const gitProcess = await spawn('git', args);
         let buffer = '';
         let parsedCommits = new CommitSequence();
@@ -126,7 +126,7 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
             }
             resolve(new CommitSequence(...parsedCommits, ...parseGitLog(buffer)));
         });
-    })) as CommitSequence;
+    }));
     commits.isReversed = headBehindLastMigration;
     return commits;
 }
