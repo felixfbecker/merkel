@@ -126,10 +126,12 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
         });
         let errorBuffer = '';
         gitProcess.stderr.on('data', data => {
+            /* istanbul ignore next */
             errorBuffer += data.toString();
         });
         gitProcess.on('error', reject);
         gitProcess.on('exit', code => {
+            /* istanbul ignore next */
             if (code !== 0) {
                 reject(new Error(`git errored: ${code}\n${errorBuffer}`));
             }
