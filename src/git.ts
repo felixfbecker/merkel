@@ -1,5 +1,5 @@
 
-import {execFile, spawn} from 'mz/child_process';
+import {ChildProcess, execFile, spawn} from 'mz/child_process';
 import * as chalk from 'chalk';
 import * as path from 'path';
 import * as fs from 'mz/fs';
@@ -109,22 +109,36 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
         args.push(headBehindLastMigration ? 'HEAD..' + since.sha1 : since.sha1 + '..HEAD');
     }
     const commits = await (new Promise<CommitSequence>((resolve, reject) => {
-        const gitProcess = spawn('git', args);
+        let gitProcess: ChildProcess;
+        try {
+            gitProcess = spawn('git', args);
+        } catch (error) {
+            reject(error);
+        }
         let buffer = '';
-        let parsedCommits = new CommitSequence();
+        const parsedCommits = new CommitSequence();
         gitProcess.stdout.on('data', data => {
             buffer += data.toString().trim();
-            const completeCommits = buffer.substring(0, buffer.lastIndexOf('>>>>COMMIT\n'));
-            buffer = buffer.substring(buffer.lastIndexOf('>>>>COMMIT\n'));
-            const parsedLog = parseGitLog(completeCommits);
-            parsedCommits = new CommitSequence(...parsedCommits, ...parsedLog);
+            const commitMarkerIndex = buffer.lastIndexOf('>>>>COMMIT\n');
+            if (commitMarkerIndex !== -1) {
+                const completeCommits = buffer.substring(0, commitMarkerIndex);
+                buffer = buffer.substring(commitMarkerIndex);
+                const parsedLog = parseGitLog(completeCommits);
+                for (const commit of parsedLog) {
+                    parsedCommits.push(commit);
+                }
+            }
         });
         gitProcess.on('error', reject);
         gitProcess.on('exit', code => {
             if (code !== 0) {
                 reject(new Error('git errored: ' + code));
             }
-            resolve(new CommitSequence(...parsedCommits, ...parseGitLog(buffer)));
+            const parsedLog = parseGitLog(buffer);
+            for (const commit of parsedLog) {
+                parsedCommits.push(commit);
+            }
+            resolve(parsedCommits);
         });
     }));
     commits.isReversed = headBehindLastMigration;
