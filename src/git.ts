@@ -1,5 +1,5 @@
 
-import {execFile} from 'mz/child_process';
+import {execFile, spawn} from 'mz/child_process';
 import * as chalk from 'chalk';
 import * as path from 'path';
 import * as fs from 'mz/fs';
@@ -108,9 +108,25 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     if (since) {
         args.push(headBehindLastMigration ? 'HEAD..' + since.sha1 : since.sha1 + '..HEAD');
     }
-    const [stdout] = await execFile('git', args);
-    const output = stdout.toString().trim();
-    const commits = parseGitLog(output);
+    const commits = await (new Promise(async (resolve, reject) => {
+        const gitProcess = await spawn('git', args);
+        let buffer = '';
+        let parsedCommits = new CommitSequence();
+        gitProcess.stdout.on('data', data => {
+            buffer += data.toString().trim();
+            const completeCommits = buffer.substring(0, buffer.lastIndexOf('>>>>COMMIT\n'));
+            buffer = buffer.substring(buffer.lastIndexOf('>>>>COMMIT\n'));
+            const parsedLog = parseGitLog(completeCommits);
+            parsedCommits = new CommitSequence(...parsedCommits, ...parsedLog);
+        });
+        gitProcess.on('error', reject);
+        gitProcess.on('exit', code => {
+            if (code !== 0) {
+                reject(new Error('git errored: ' + code));
+            }
+            resolve(new CommitSequence(...parsedCommits, ...parseGitLog(buffer)));
+        });
+    })) as CommitSequence;
     commits.isReversed = headBehindLastMigration;
     return commits;
 }
