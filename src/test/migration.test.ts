@@ -1,4 +1,7 @@
-import * as assert from 'assert';
+import * as chai from 'chai';
+const chaiAsPromised = require('chai-as-promised');
+chai.use(chaiAsPromised);
+const assert = chai.assert;
 import * as fs from 'mz/fs';
 import * as path from 'path';
 import * as pg from 'pg';
@@ -130,76 +133,31 @@ describe('migration', () => {
                 const task = new Task({type: 'up', migration: new Migration({name: 'not_found'})});
                 const head = new Commit({sha1: 'HEADCOMMITSHA1'});
                 const trigger = new Commit({sha1: 'TRIGGERCOMMITSHA1'});
-                try {
-                    await task.execute(__dirname + '/migrations', adapter, head, trigger);
-                    throw new assert.AssertionError({
-                        message: 'No MigrationNotFoundError was thrown.'
-                    });
-                } catch (err) {
-                    if (!(err instanceof MigrationNotFoundError)) {
-                        throw err;
-                    }
-                }
+                await assert.isRejected(task.execute(__dirname + '/migrations', adapter, head, trigger), MigrationNotFoundError);
             });
             it('should throw a MigrationLoadError if the migration fails loading', async () => {
                 const task = new Task({type: 'up', migration: new Migration({name: 'error_load'})});
                 const head = new Commit({sha1: 'HEADCOMMITSHA1'});
                 const trigger = new Commit({sha1: 'TRIGGERCOMMITSHA1'});
-                try {
-                    await task.execute(__dirname + '/migrations', adapter, head, trigger);
-                    throw new assert.AssertionError({
-                        message: 'No MigrationLoadError was thrown.'
-                    });
-                } catch (err) {
-                    if (!(err instanceof MigrationLoadError)) {
-                        throw err;
-                    }
-                }
+                await assert.isRejected(task.execute(__dirname + '/migrations', adapter, head, trigger), MigrationLoadError);
             });
             it('should throw a TaskTypeNotFoundError if the migration has no up or down function', async () => {
                 const task = new Task({type: 'up', migration: new Migration({name: 'no_up'})});
                 const head = new Commit({sha1: 'HEADCOMMITSHA1'});
                 const trigger = new Commit({sha1: 'TRIGGERCOMMITSHA1'});
-                try {
-                    await task.execute(__dirname + '/migrations', adapter, head, trigger);
-                    throw new assert.AssertionError({
-                        message: 'No TaskTypeNotFoundError was thrown.'
-                    });
-                } catch (err) {
-                    if (!(err instanceof TaskTypeNotFoundError)) {
-                        throw err;
-                    }
-                }
+                await assert.isRejected(task.execute(__dirname + '/migrations', adapter, head, trigger), TaskTypeNotFoundError);
             });
             it('should throw a MigrationExecutionError when the migration returns a rejected promise', async () => {
                 const task = new Task({type: 'up', migration: new Migration({name: 'error_async'})});
                 const head = new Commit({sha1: 'HEADCOMMITSHA1'});
                 const trigger = new Commit({sha1: 'TRIGGERCOMMITSHA1'});
-                try {
-                    await task.execute(__dirname + '/migrations', adapter, head, trigger);
-                    throw new assert.AssertionError({
-                        message: 'No MigrationExecutionError was thrown.'
-                    });
-                } catch (err) {
-                    if (!(err instanceof MigrationExecutionError)) {
-                        throw err;
-                    }
-                }
+                await assert.isRejected(task.execute(__dirname + '/migrations', adapter, head, trigger), MigrationExecutionError);
             });
             it('should throw a MigrationExecutionError when the migration throws sync', async () => {
                 const task = new Task({type: 'up', migration: new Migration({name: 'error_sync'})});
                 const head = new Commit({sha1: 'HEADCOMMITSHA1'});
                 const trigger = new Commit({sha1: 'TRIGGERCOMMITSHA1'});
-                try {
-                    await task.execute(__dirname + '/migrations', adapter, head, trigger);
-                    throw new assert.AssertionError({
-                        message: 'No Migration ExecutionError was thrown.'
-                    });
-                } catch (err) {
-                    if (!(err instanceof MigrationExecutionError)) {
-                        throw err;
-                    }
-                }
+                await assert.isRejected(task.execute(__dirname + '/migrations', adapter, head, trigger), MigrationExecutionError);
             });
             it('should throw a MigrationExecutionError when the migration would crash the process', async () => {
                 const task = new Task({type: 'up', migration: new Migration({name: 'error_crash'})});
@@ -209,14 +167,7 @@ describe('migration', () => {
                 try {
                     listener = process.listeners('uncaughtException').pop();
                     process.removeListener('uncaughtException', listener);
-                    await task.execute(__dirname + '/migrations', adapter, head, trigger);
-                    throw new assert.AssertionError({
-                        message: 'No Migration ExecutionError was thrown.'
-                    });
-                } catch (err) {
-                    if (!(err instanceof MigrationExecutionError)) {
-                        throw err;
-                    }
+                    await assert.isRejected(task.execute(__dirname + '/migrations', adapter, head, trigger), MigrationExecutionError);
                 } finally {
                     process.addListener('uncaughtException', listener);
                 }
@@ -225,16 +176,7 @@ describe('migration', () => {
         describe('toString', () => {
             it('should throw if the task type is unknown', async () => {
                 const task = new Task(<any>{type: 'd'});
-                try {
-                    task.toString();
-                    throw new assert.AssertionError({
-                        message: 'Task did not throw error on toString with wrong type'
-                    });
-                } catch (err) {
-                    if (!(err instanceof UnknownTaskTypeError)) {
-                        throw err;
-                    }
-                }
+                assert.throws(task.toString.bind(task), UnknownTaskTypeError);
             });
         });
     });
