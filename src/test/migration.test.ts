@@ -4,6 +4,7 @@ import * as path from 'path';
 import * as pg from 'pg';
 import {
     Migration,
+    MigrationLoadError,
     MigrationNotFoundError,
     MigrationExecutionError,
     TaskTypeNotFoundError,
@@ -136,6 +137,21 @@ describe('migration', () => {
                     });
                 } catch (err) {
                     if (!(err instanceof MigrationNotFoundError)) {
+                        throw err;
+                    }
+                }
+            });
+            it('should throw a MigrationLoadError if the migration fails loading', async () => {
+                const task = new Task({type: 'up', migration: new Migration({name: 'error_load'})});
+                const head = new Commit({sha1: 'HEADCOMMITSHA1'});
+                const trigger = new Commit({sha1: 'TRIGGERCOMMITSHA1'});
+                try {
+                    await task.execute(__dirname + '/migrations', adapter, head, trigger);
+                    throw new assert.AssertionError({
+                        message: 'No MigrationLoadError was thrown.'
+                    });
+                } catch (err) {
+                    if (!(err instanceof MigrationLoadError)) {
                         throw err;
                     }
                 }
