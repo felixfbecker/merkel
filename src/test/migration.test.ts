@@ -176,7 +176,7 @@ describe('migration', () => {
         describe('toString', () => {
             it('should throw if the task type is unknown', async () => {
                 const task = new Task(<any>{type: 'd'});
-                assert.throws(task.toString.bind(task), UnknownTaskTypeError);
+                assert.throws(() => task.toString(), UnknownTaskTypeError);
             });
         });
     });
