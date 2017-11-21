@@ -7,6 +7,12 @@ import * as fs from 'mz/fs';
 
 export type TaskType = 'up' | 'down';
 
+export class MigrationLoadError extends Error {
+    constructor(public migration: Migration, public migrationDir: string, public error: any) {
+        super('Error loading migration file ' + migrationDir + sep + chalk.bold(migration.name) + '.js:\n' + error);
+    }
+}
+
 export class FirstDownMigrationError extends Error {
     constructor(public migration: Migration) {
         super(`The first migration cannot be a down migration (${migration.name})`);
@@ -137,11 +143,11 @@ export class Task {
                 migrationDir = config.migrationOutDir;
             }
         }
+        const path = await this.migration.getPath(migrationDir);
         try {
-            const path = await this.migration.getPath(migrationDir);
             migrationExports = require(path);
         } catch (err) {
-            throw new MigrationNotFoundError(this.migration, migrationDir);
+            throw new MigrationLoadError(this.migration, migrationDir, err);
         }
         if (typeof migrationExports[this.type] !== 'function') {
             throw new TaskTypeNotFoundError(this.migration, this.type, migrationDir);

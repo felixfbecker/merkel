@@ -17,5 +17,9 @@
   },
   "globalDevDependencies": {
     "mocha": "registry:env/mocha#2.2.5+20160926180742"
+  },
+  "devDependencies": {
+    "chai": "registry:npm/chai#3.5.0+20160723033700",
+    "chai-as-promised": "registry:npm/chai-as-promised#5.1.0+20160310030142"
   }
 }
