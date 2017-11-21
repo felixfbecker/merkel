@@ -1,5 +1,5 @@
 
-import {execFile} from 'mz/child_process';
+import {ChildProcess, execFile, spawn} from 'mz/child_process';
 import * as chalk from 'chalk';
 import * as path from 'path';
 import * as fs from 'mz/fs';
@@ -68,7 +68,7 @@ export class Commit {
 
 async function hasHead(): Promise<Boolean> {
     try {
-        await execFile('git', ['rev-parse', '--verify', 'HEAD']);
+        await execFile('git', ['show', '--format=%H', '--no-patch', 'HEAD']);
         return true;
     } catch (err) {
         return false;
@@ -82,7 +82,7 @@ async function hasHead(): Promise<Boolean> {
 export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     if (since) {
         try {
-            await execFile('git', ['show', since.sha1]);
+            await execFile('git', ['show', '--format=%H', '--no-patch', since.sha1]);
         } catch (err) {
             // the last migration head does not exist in this repository
             throw new UnknownCommitError(since);
@@ -108,9 +108,40 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     if (since) {
         args.push(headBehindLastMigration ? 'HEAD..' + since.sha1 : since.sha1 + '..HEAD');
     }
-    const [stdout] = await execFile('git', args);
-    const output = stdout.toString().trim();
-    const commits = parseGitLog(output);
+    const commits = await (new Promise<CommitSequence>((resolve, reject) => {
+        const gitProcess = spawn('git', args);
+        let buffer = '';
+        const parsedCommits = new CommitSequence();
+        gitProcess.stdout.on('data', data => {
+            buffer += data.toString().trim();
+            const commitMarkerIndex = buffer.lastIndexOf('>>>>COMMIT\n');
+            if (commitMarkerIndex !== -1) {
+                const completeCommits = buffer.substring(0, commitMarkerIndex);
+                buffer = buffer.substring(commitMarkerIndex);
+                const parsedLog = parseGitLog(completeCommits);
+                for (const commit of parsedLog) {
+                    parsedCommits.push(commit);
+                }
+            }
+        });
+        let errorBuffer = '';
+        gitProcess.stderr.on('data', data => {
+            /* istanbul ignore next */
+            errorBuffer += data.toString();
+        });
+        gitProcess.on('error', reject);
+        gitProcess.on('exit', code => {
+            /* istanbul ignore next */
+            if (code !== 0) {
+                reject(new Error(`git errored: ${code}\n${errorBuffer}`));
+            }
+            const parsedLog = parseGitLog(buffer);
+            for (const commit of parsedLog) {
+                parsedCommits.push(commit);
+            }
+            resolve(parsedCommits);
+        });
+    }));
     commits.isReversed = headBehindLastMigration;
     return commits;
 }
