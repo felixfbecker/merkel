@@ -20,7 +20,7 @@ export class PostgresAdapter extends DbAdapter {
     constructor(url: string, lib: typeof pg) {
         super();
         this.lib = lib;
-        this.client = new this.lib.Client(url);
+        this.client = new this.lib.Client({ connectionString: url });
     }
 
     /**

@@ -1,7 +1,7 @@
 
 import * as yargs from 'yargs';
 import * as fs from 'mz/fs';
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 import {getHead} from './git';
 import {TaskType, Task, Migration} from './migration';
 import {getStatus, generate, prepareCommitMsg, isMerkelRepository, createConfig, createMigrationDir} from './index';
@@ -18,7 +18,7 @@ interface Config {
     migrationOutDir?: string;
 }
 
-interface Argv extends yargs.Argv, Config { }
+interface Argv extends yargs.Arguments, Config { }
 
 const dbOption: yargs.Options = {
     description: 'The connection URL for the database',
@@ -182,7 +182,7 @@ interface PrepareCommitMsgArgv extends Argv {
 
 yargs.command(
     'prepare-commit-msg <msgfile> [source] [sha1]',
-    false,
+    false as any,
     {
         migrationDir: {
             required: true

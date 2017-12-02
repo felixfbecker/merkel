@@ -3,10 +3,10 @@ import {getNewCommits, Commit, CommitSequence} from './git';
 import {DbAdapter} from './adapter';
 import {Task} from './migration';
 import {isRevertCommit, getTasksForNewCommit, getHead} from './git';
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 import * as fs from 'mz/fs';
 import * as path from 'path';
-import * as uuid from 'node-uuid';
+import uuidv1 = require('uuid/v1');
 import mkdirp = require('mkdirp');
 
 export * from './git';
@@ -207,7 +207,7 @@ export class MigrationAlreadyExistsError extends Error {
  * Generates a new migration file
  */
 export async function generate(options: GenerateOptions, logger: Logger = CLI_LOGGER): Promise<string> {
-    options.name = options.name || uuid.v1();
+    options.name = options.name || uuidv1();
     let template: string;
     let ext: string = '';
     if (options.template) {

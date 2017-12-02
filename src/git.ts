@@ -1,6 +1,6 @@
 
 import {ChildProcess, execFile, spawn} from 'mz/child_process';
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 import * as path from 'path';
 import * as fs from 'mz/fs';
 import {Migration, TaskType, Task, TaskList} from './migration';

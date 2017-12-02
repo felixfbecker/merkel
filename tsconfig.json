@@ -8,8 +8,7 @@
     "sourceMap": true,
     "declaration": true,
     "typeRoots": [
-      "typings/global",
-      "typings/modules"
+      "node_modules/@types"
     ]
   },
   "exclude": [

@@ -1,5 +1,5 @@
 
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 import {resolve, sep} from 'path';
 import {DbAdapter} from './adapter';
 import {Commit, getConfigurationForCommit} from './git';
@@ -153,7 +153,7 @@ export class Task {
             throw new TaskTypeNotFoundError(this.migration, this.type, migrationDir);
         }
         try {
-            let exceptionHandler: Function;
+            let exceptionHandler: () => void;
             try {
                 await Promise.race([
                     new Promise((resolve, reject) => {
