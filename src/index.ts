@@ -171,8 +171,11 @@ export async function isMerkelRepository(): Promise<boolean> {
 /**
  * Creates the migration directory
  */
-export async function createMigrationDir(migrationDir: string) {
-    await new Promise((resolve, reject) => mkdirp(migrationDir, (err, made) => err ? reject(err) : resolve(made)));
+export function createMigrationDir(migrationDir: string): Promise<boolean> {
+    return new Promise((resolve, reject) => mkdirp(migrationDir, (err, made) =>
+        /* istanbul ignore next */
+        err ? reject(err) : resolve(!!made)
+    ));
 }
 
 /**
