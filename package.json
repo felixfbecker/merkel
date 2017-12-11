@@ -36,7 +36,7 @@
     "yargs": "^10.0.3"
   },
   "devDependencies": {
-    "@types/chai": "^4.0.6",
+    "@types/chai": "4.0.8",
     "@types/chai-as-promised": "^7.1.0",
     "@types/del": "^3.0.0",
     "@types/globby": "^6.1.0",
