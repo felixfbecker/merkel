@@ -101,7 +101,7 @@ yargs.command(
             if (await createMigrationDir(<string>migrationDir)) {
                 process.stdout.write(`Created ${chalk.cyan(<string>migrationDir)}\n`);
             }
-            createConfig({
+            await createConfig({
                 migrationDir: <string>migrationDir,
                 migrationOutDir: <string>migrationOutDir || './migrations'
             });
