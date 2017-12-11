@@ -16,11 +16,13 @@ import {
     createConfig
 } from '../index';
 import {execFile} from 'mz/child_process';
-import * as assert from 'assert';
 import * as fs from 'mz/fs';
 import * as path from 'path';
 import * as del from 'del';
 import {tmpdir} from 'os';
+import { assert, use as useChaiPlugin } from 'chai';
+import chaiAsPromised = require('chai-as-promised');
+useChaiPlugin(chaiAsPromised);
 const repo = path.join(tmpdir(), 'merkel_test_repo');
 console.log(repo);
 
@@ -43,16 +45,7 @@ describe('git', () => {
         });
         it('should not add githook twice', async () => {
             await addGitHook();
-            try {
-                await addGitHook();
-                throw new assert.AssertionError({
-                    message: 'it added the git hook twice.'
-                });
-            } catch (err) {
-                if (!(err instanceof HookAlreadyFoundError)) {
-                    throw err;
-                }
-            }
+            await assert.isRejected(addGitHook(), HookAlreadyFoundError);
         });
         it('should append the githook, when the prepare-commit-msg hook already exists', async () => {
             await fs.writeFile(path.join(process.cwd(), '.git', 'hooks', 'prepare-commit-msg'), 'keep me\n');
@@ -151,14 +144,7 @@ describe('git', () => {
             });
         });
         it('should throw an UnknownCommitError when the since commit is unknown', async () => {
-            try {
-                await getNewCommits(new Commit({sha1: 'whatever'}));
-                throw new assert.AssertionError({message: 'Did not throw'});
-            } catch (err) {
-                if (!(err instanceof UnknownCommitError)) {
-                    throw err;
-                }
-            }
+            await assert.isRejected(getNewCommits(new Commit({sha1: 'whatever'})), UnknownCommitError);
         });
     });
     describe('getHead', () => {

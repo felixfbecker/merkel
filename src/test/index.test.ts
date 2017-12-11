@@ -13,9 +13,14 @@ import {Commit, CommitSequence} from '../git';
 import * as path from 'path';
 import * as fs from 'mz/fs';
 import * as del from 'del';
-import * as assert from 'assert';
+import { assert, use as useChaiPlugin } from 'chai';
 import {tmpdir} from 'os';
 import {execFile} from 'mz/child_process';
+import chaiAsPromised = require('chai-as-promised');
+import chalk from 'chalk';
+useChaiPlugin(chaiAsPromised);
+
+chalk.enabled = false;
 
 const repo = path.join(tmpdir(), 'merkel_test_api');
 
@@ -69,13 +74,7 @@ describe('index', () => {
         });
         it('should generate javascript when no tsconfig.json is present', async () => {
             await generate({ migrationDir: 'test', name: 'test' }, SILENT_LOGGER);
-            try {
-                await fs.access('test/test.js');
-            } catch (err) {
-                throw new assert.AssertionError({
-                    message: 'no javascript migration was created.'
-                });
-            }
+            assert.isTrue(await fs.exists('test/test.js'), 'Expected javascript migration to be created')
         });
         it('should render a template, if given', async () => {
             const template = `
@@ -92,24 +91,15 @@ describe('index', () => {
             assert.equal(content, template);
         });
         it('should throw if migration file would be overwritten', async () => {
-            try {
-                await createMigrationDir('test');
-                await fs.writeFile('test/test.js', `
-                    export function up() {
-                    }
-                `);
-                await generate({
-                    migrationDir: 'test',
-                    name: 'test'
-                }, SILENT_LOGGER);
-                throw new assert.AssertionError({
-                    message: 'it did not throw although migration was already present'
-                });
-            } catch (err) {
-                if (!(err instanceof MigrationAlreadyExistsError)) {
-                    throw err;
+            await createMigrationDir('test');
+            await fs.writeFile('test/test.js', `
+                export function up() {
                 }
-            }
+            `);
+            await assert.isRejected(generate({
+                migrationDir: 'test',
+                name: 'test'
+            }, SILENT_LOGGER), MigrationAlreadyExistsError);
         });
         it('should not crash if template does not exist', async () => {
             await createMigrationDir('test');
@@ -189,12 +179,12 @@ describe('index', () => {
                 });
                 status.newCommits = new CommitSequence();
                 const output = status.toString();
-                assert(output.includes('▲ UP   user'));
-                assert(output.includes('Thu Jan 01 1970'));
-                assert(output.includes('initial'));
-                assert(output.includes('header'));
-                assert(output.includes('‖'));
-                assert(output.includes('top'));
+                assert.include(output, '▲ UP   user');
+                assert.include(output, new Date(0).toString());
+                assert.include(output, 'initial');
+                assert.include(output, 'header');
+                assert.include(output, '‖');
+                assert.include(output, 'top');
             });
         });
     });
