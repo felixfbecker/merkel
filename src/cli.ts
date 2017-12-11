@@ -182,7 +182,7 @@ interface PrepareCommitMsgArgv extends Argv {
 
 yargs.command(
     'prepare-commit-msg <msgfile> [source] [sha1]',
-    false as any,
+    false,
     {
         migrationDir: {
             required: true
