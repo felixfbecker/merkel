@@ -1,7 +1,11 @@
-node_modules/
-.vscode/
-typedoc/
-src/
-coverage/
 .nyc_output/
+.vscode/
+appveyor.yml
+coverage/
+dist/test/
 migrations/
+node_modules/
+src/
+tsconfig.json
+tslint.json
+typedoc/
