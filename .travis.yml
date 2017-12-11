@@ -15,7 +15,6 @@ env:
 
 install:
  - npm install
- - typings install
 
 before_script:
  - psql -c 'CREATE DATABASE merkel_test;' -U postgres

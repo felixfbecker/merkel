@@ -12,7 +12,7 @@ import * as assert from 'assert';
 describe('PostgresAdapter', () => {
     let client: pg.Client;
     before(async () => {
-        client = new pg.Client(process.env.MERKEL_DB);
+        client = new pg.Client({ connectionString: process.env.MERKEL_DB });
         await new Promise<void>((resolve, reject) => client.connect(err => err ? reject(err) : resolve()));
     });
     after(() => client.end());
@@ -24,7 +24,7 @@ describe('PostgresAdapter', () => {
         it('should create the database schema', async () => {
             const adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
             await adapter.init();
-            const client = new pg.Client(process.env.MERKEL_DB);
+            const client = new pg.Client({ connectionString: process.env.MERKEL_DB });
             await new Promise<void>((resolve, reject) => client.connect(err => err ? reject(err) : resolve()));
             const {rows} = await client.query(`SELECT column_name, data_type FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'merkel_meta' ORDER BY column_name ASC`);
             assert.deepEqual(rows, [

@@ -174,7 +174,7 @@ describe('git', () => {
         it('should get error when no HEAD exists', async () => {
             try {
                 await getHead();
-                assert.fail();
+                assert.fail('Getting HEAD should have failed');
             } catch (err) {
                 if (!(err instanceof NoCommitsError)) {
                     throw err;

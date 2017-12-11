@@ -17,7 +17,7 @@ describe('E2E', () => {
     const repo = tmpdir() + '/merkel_test_repo';
     before(async function () {
         this.timeout(30000);
-        client = new pg.Client(process.env.MERKEL_DB);
+        client = new pg.Client({ connectionString: process.env.MERKEL_DB });
         await new Promise<void>((resolve, reject) => client.connect((err) => err ? reject(err) : resolve()));
         await client.query('DROP TABLE IF EXISTS "new_table"');
         await client.query('DROP TABLE IF EXISTS merkel_meta');

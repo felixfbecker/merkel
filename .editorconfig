@@ -10,8 +10,5 @@ trim_trailing_whitespace = true
 [*.{json,yml}]
 indent_size = 2
 
-[typings.json]
-indent_size = 4
-
 [*.md]
 trim_trailing_whitespace = false

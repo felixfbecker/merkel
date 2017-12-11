@@ -6,11 +6,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "sourceMap": true,
-    "declaration": true,
-    "typeRoots": [
-      "typings/global",
-      "typings/modules"
-    ]
+    "declaration": true
   },
   "exclude": [
     "node_modules",

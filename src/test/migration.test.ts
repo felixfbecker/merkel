@@ -114,7 +114,7 @@ describe('migration', () => {
             before(async () => {
                 adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
                 await adapter.init();
-                client = new pg.Client(process.env.MERKEL_DB);
+                client = new pg.Client({ connectionString: process.env.MERKEL_DB });
                 await new Promise<void>((resolve, reject) => client.connect(err => err ? reject(err) : resolve()));
                 await client.query('DROP TABLE IF EXISTS new_table');
                 await client.query('TRUNCATE TABLE merkel_meta RESTART IDENTITY');
@@ -163,7 +163,7 @@ describe('migration', () => {
                 const task = new Task({type: 'up', migration: new Migration({name: 'error_crash'})});
                 const head = new Commit({sha1: 'HEADCOMMITSHA1'});
                 const trigger = new Commit({sha1: 'TRIGGERCOMMITSHA1'});
-                let listener: Function;
+                let listener: (err: Error) => void;
                 try {
                     listener = process.listeners('uncaughtException').pop();
                     process.removeListener('uncaughtException', listener);
