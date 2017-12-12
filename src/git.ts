@@ -169,7 +169,8 @@ export async function addGitHook(): Promise<['appended' | 'created', string]> {
     const hookPath = path.normalize('.git/hooks/prepare-commit-msg');
     const hook = [
         '',
-        'node ../node_modules/merkel/bin/merkel prepare-commit-msg $1 $2 $3',
+        'PATH="$(pwd)/node_modules/merkel/bin:$PATH"',
+        'merkel prepare-commit-msg $1 $2 $3',
         ''
     ].join('\n');
     let content: string;
