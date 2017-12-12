@@ -20,7 +20,7 @@
     "typedoc": "typedoc --module commonjs --target es2015 --mode modules --readme none --out typedoc src",
     "test": "mocha \"dist/test/**/*.test.js\" --exit --timeout 5000 --require source-map-support/register",
     "cover": "nyc --all --require source-map-support/register mocha --exit --timeout 5000 \"dist/test/**/*.test.js\"",
-    "semantic-release": "semantic-release pre && npm publish && semantic-release post",
+    "semantic-release": "semantic-release",
     "commitmsg": "validate-commit-msg"
   },
   "author": "Felix Becker <felix.b@outlook.com>",
@@ -58,7 +58,7 @@
     "nyc": "^11.3.0",
     "pg": "^7.4.0",
     "rimraf": "^2.5.4",
-    "semantic-release": "^8.2.0",
+    "semantic-release": "^11.0.2",
     "sinon": "^4.1.2",
     "source-map-support": "^0.5.0",
     "tslint": "^5.8.0",

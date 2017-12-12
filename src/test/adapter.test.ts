@@ -9,28 +9,14 @@ describe('Adapter', () => {
             assert(adapter instanceof PostgresAdapter, 'adapter is no postgres adapter');
         });
         it('should throw for invalid connection urls', async () => {
-            try {
+            assert.throws(() => {
                 createAdapterFromUrl('');
-                throw new assert.AssertionError({
-                    message: 'it did not throw for an invalid connection url'
-                });
-            } catch (err) {
-                if (!(err instanceof InvalidConnectionError)) {
-                    throw err;
-                }
-            }
+            }, InvalidConnectionError);
         });
         it('should throw for unsupported db dialects', async () => {
-            try {
+            assert.throws(() => {
                 createAdapterFromUrl('mysql://user@localhost/test');
-                throw new assert.AssertionError({
-                    message: 'it did not throw for an unsupported db dialect'
-                });
-            } catch (err) {
-                if (!(err instanceof UnsupportedDialectError)) {
-                    throw err;
-                }
-            }
+            }, UnsupportedDialectError);
         });
     });
 });

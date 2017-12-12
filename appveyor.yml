@@ -1,15 +1,20 @@
 version: '{build}'
 
-platform:
-  - x64
+image: Visual Studio 2017
+clone_depth: 1
+skip_branch_with_pr: true
+skip_tags: true
+
+cache:
+  - '%APPDATA%\npm-cache'
 
 services:
-  - postgresql
-
-shallow_clone: true
+  - postgresql96
 
 environment:
+  NODE_VERSION: '8'
   MERKEL_DB: postgres://postgres:Password12!@localhost:5432/merkel_test
+  PGUSER: postgres
   PGPASSWORD: Password12!
 
 install:
@@ -20,9 +25,18 @@ build_script:
   - npm run build
 
 before_test:
-  - '"C:\Program Files\PostgreSQL\9.3\bin\psql" -c "CREATE DATABASE merkel_test;" -U postgres'
+  - SET PATH=C:\Program Files\PostgreSQL\9.6\bin\;%PATH%
+  - createdb merkel_test
   - git config --global user.email "you@example.com"
   - git config --global user.name "Your Name"
 
 test_script:
-  - npm test
+  - npm test -- --colors
+
+# Coverage doesn't work because of https://github.com/tapjs/spawn-wrap/issues/69
+# after_test:
+#   - ps: |
+#       node_modules\.bin\nyc report --reporter=json
+#       $env:PATH = 'C:\msys64\usr\bin;' + $env:PATH
+#       Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
+#       bash codecov.sh -f coverage\coverage-final.info

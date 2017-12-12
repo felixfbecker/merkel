@@ -7,7 +7,9 @@ import {
 } from '../../migration';
 import {Commit} from '../../git';
 import * as pg from 'pg';
-import * as assert from 'assert';
+import { assert, use as useChaiPlugin } from 'chai';
+import chaiAsPromised = require('chai-as-promised');
+useChaiPlugin(chaiAsPromised);
 
 describe('PostgresAdapter', () => {
     let client: pg.Client;
@@ -100,7 +102,7 @@ describe('PostgresAdapter', () => {
                     sha1: '234',
                     tasks: []
                 }
-            });
+            } as Task);
         });
     });
     describe('checkIfTaskCanExecute', async () => {
@@ -121,16 +123,7 @@ describe('PostgresAdapter', () => {
                 })
             });
             await adapter.logMigrationTask(upTask);
-            try {
-                await adapter.checkIfTaskCanExecute(upTask);
-                throw new assert.AssertionError({
-                    message: 'task could be executed twice'
-                });
-            } catch (err) {
-                if (!(err instanceof MigrationRunTwiceError)) {
-                    throw err;
-                }
-            }
+            await assert.isRejected(adapter.checkIfTaskCanExecute(upTask), MigrationRunTwiceError);
         });
         it('should not run the same migration down twice', async () => {
             const adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
@@ -149,16 +142,7 @@ describe('PostgresAdapter', () => {
                 })
             });
             await adapter.logMigrationTask(downTask);
-            try {
-                await adapter.checkIfTaskCanExecute(downTask);
-                throw new assert.AssertionError({
-                    message: 'task could be executed twice'
-                });
-            } catch (err) {
-                if (!(err instanceof MigrationRunTwiceError)) {
-                    throw err;
-                }
-            }
+            await assert.isRejected(adapter.checkIfTaskCanExecute(downTask), MigrationRunTwiceError);
         });
         it('should not run a down migration first', async () => {
             const adapter = new PostgresAdapter(process.env.MERKEL_DB, pg);
@@ -176,16 +160,7 @@ describe('PostgresAdapter', () => {
                     sha1: '2'
                 })
             });
-            try {
-                await adapter.checkIfTaskCanExecute(task);
-                throw new assert.AssertionError({
-                    message: 'down task could be executed first'
-                });
-            } catch (err) {
-                if (!(err instanceof FirstDownMigrationError)) {
-                    throw err;
-                }
-            }
+            await assert.isRejected(adapter.checkIfTaskCanExecute(task), FirstDownMigrationError);
         });
     });
 });

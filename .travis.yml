@@ -1,42 +1,53 @@
 language: node_js
 
 node_js:
- - 8
+  - '8'
 
-sudo: false
+cache:
+  directories:
+    - ~/.npm
 
 services:
- - postgresql
+  - postgresql
 
 env:
   global:
-   - CODECOV_TOKEN=76be2746-185f-49c1-a302-ed592d765a67
-   - MERKEL_DB=postgres://postgres@localhost:5432/merkel_test
+    - PGUSER=postgres
+    - MERKEL_DB=postgres://postgres@localhost:5432/merkel_test
 
 install:
- - npm install
-
-before_script:
- - psql -c 'CREATE DATABASE merkel_test;' -U postgres
- - git config --global user.email 'whatever@whatever.com'
- - git config --global user.name 'whatever'
+  - npm install
 
 script:
- - npm run build
- - npm run cover
+  - createdb merkel_test
+  - git config --global user.email 'whatever@whatever.com'
+  - git config --global user.name 'whatever'
+  - npm run build
+  - npm run cover -- --colors
+  - nyc report --reporter=json
+  - bash <(curl -s https://codecov.io/bash) -f coverage/coverage-final.json
 
-after_success:
- - 'nyc report --reporter=lcov && bash <(curl -s https://codecov.io/bash) -f coverage/lcov.info'
- - npm run semantic-release
+jobs:
+  include:
+    - stage: test
+    - stage: release
+      script:
+        - npm run build
+        - npm run semantic-release
+      before_deploy:
+        - npm run typedoc
+      deploy:
+        skip_cleanup: true
+        provider: surge
+        project: ./typedoc/
+        domain: merkel.surge.sh
 
-before_deploy:
- - npm run typedoc
-deploy:
-  skip_cleanup: true
-  provider: surge
-  project: ./typedoc/
-  domain: merkel.surge.sh
+stages:
+  - test
+  - name: release
+    if: branch = master AND type = push AND fork = false
 
 branches:
-  except:
-   - /^v\d+\.\d+\.\d+$/
+  only:
+    - master
+    - /^greenkeeper.*$/
