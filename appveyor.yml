@@ -31,12 +31,12 @@ before_test:
   - git config --global user.name "Your Name"
 
 test_script:
-  # Coverage doesn't work because of https://github.com/tapjs/spawn-wrap/issues/69
   - npm test -- --colors
 
-after_test:
-  - ps: |
-      node_modules\.bin\nyc report --reporter=json
-      $env:PATH = 'C:\msys64\usr\bin;' + $env:PATH
-      Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
-      bash codecov.sh -f coverage\coverage-final.info
+# Coverage doesn't work because of https://github.com/tapjs/spawn-wrap/issues/69
+# after_test:
+#   - ps: |
+#       node_modules\.bin\nyc report --reporter=json
+#       $env:PATH = 'C:\msys64\usr\bin;' + $env:PATH
+#       Invoke-WebRequest -Uri 'https://codecov.io/bash' -OutFile codecov.sh
+#       bash codecov.sh -f coverage\coverage-final.info
