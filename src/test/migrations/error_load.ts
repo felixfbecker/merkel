@@ -1,2 +1,1 @@
-
-throw new Error('Migration failed loading');
+throw new Error('Migration failed loading')

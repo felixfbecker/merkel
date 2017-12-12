@@ -1,19 +1,18 @@
+# merkel
 
-# `merkel`
+Handles your database migration crisis
 
-> _Handles your database migration crisis_
-
-[![Version](https://img.shields.io/npm/v/merkel.svg)](https://www.npmjs.com/package/merkel)
-[![Downloads](https://img.shields.io/npm/dt/merkel.svg)](https://www.npmjs.com/package/merkel)
-[![Build Status](https://travis-ci.org/felixfbecker/merkel.svg?branch=master)](https://travis-ci.org/felixfbecker/merkel)
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/ycuaue3nmlstep78/branch/master?svg=true)](https://ci.appveyor.com/project/felixfbecker/merkel/branch/master)
-[![Coverage](https://codecov.io/gh/felixfbecker/merkel/branch/master/graph/badge.svg?token=BuoxrgBs54)](https://codecov.io/gh/felixfbecker/merkel)
-[![Dependency Status](https://gemnasium.com/badges/github.com/felixfbecker/merkel.svg)](https://gemnasium.com/github.com/felixfbecker/merkel)
-![Node Version](https://img.shields.io/node/v/merkel.svg)
+[![npm](https://img.shields.io/npm/v/merkel.svg)](https://www.npmjs.com/package/merkel)
+[![downloads](https://img.shields.io/npm/dt/merkel.svg)](https://www.npmjs.com/package/merkel)
+[![linux build](https://img.shields.io/travis/felixfbecker/merkel/master.svg?label=linux+build)](https://travis-ci.org/felixfbecker/merkel)
+[![windows build](https://img.shields.io/appveyor/ci/felixfbecker/merkel/master.svg?label=windows+build)](https://ci.appveyor.com/project/felixfbecker/merkel/branch/master)
+[![codecov](https://codecov.io/gh/felixfbecker/merkel/branch/master/graph/badge.svg?token=BuoxrgBs54)](https://codecov.io/gh/felixfbecker/merkel)
+[![dependencies](https://gemnasium.com/badges/github.com/felixfbecker/merkel.svg)](https://gemnasium.com/github.com/felixfbecker/merkel)
+![node](https://img.shields.io/node/v/merkel.svg)
+[![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
-[![License](https://img.shields.io/npm/l/merkel.svg)](https://github.com/felixfbecker/merkel/blob/master/LICENSE.txt)
-[![Gitter](https://badges.gitter.im/felixfbecker/merkel.svg)](https://gitter.im/felixfbecker/merkel?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-
+[![license](https://img.shields.io/npm/l/merkel.svg)](https://github.com/felixfbecker/merkel/blob/master/LICENSE.txt)
+[![chat: on gitter](https://badges.gitter.im/felixfbecker/merkel.svg)](https://gitter.im/felixfbecker/merkel?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 `merkel` is a framework-agnostic database migration tool designed to autonomously run in Continuous Deployment,
 with rollbacks in mind.
@@ -28,14 +27,10 @@ Run `merkel init` to initialize a `.merkelrc.json` and install a git hook
 > No, but it holds the migration directory, and if you use it, you could change it later
 > because the migration directory at any time is known through git.
 
-  
-
 > **Is the git hook required?**  
 > No, but it helps you type less. Read on to learn more.
 
-
 ## Workflow
-
 
 ### Make changes to your model files
 
@@ -68,25 +63,27 @@ use a low-level driver or high-level ORM, use the AWS SDK, spawn child processes
 Example:
 
 ```js
-const db = require('../db');
+const db = require('../db')
 
 exports.up = function up() {
-  return new Promise((resolve, reject) => db.connect(err => err ? reject(err) : resolve()))
-    .then(() => db.query('ALTER TABLE order_details RENAME COLUMN notes TO order_notes'));
+    return new Promise((resolve, reject) => db.connect(err => (err ? reject(err) : resolve()))).then(() =>
+        db.query('ALTER TABLE order_details RENAME COLUMN notes TO order_notes')
+    )
 }
 
 exports.down = function down() {
-  return new Promise((resolve, reject) => db.connect(err => err ? reject(err) : resolve()))
-    .then(() => db.query('ALTER TABLE order_details RENAME COLUMN order_notes TO notes'));
+    return new Promise((resolve, reject) => db.connect(err => (err ? reject(err) : resolve()))).then(() =>
+        db.query('ALTER TABLE order_details RENAME COLUMN order_notes TO notes')
+    )
 }
 ```
 
 Where `db.js` could look like this:
 
 ```js
-const pg = require('pg');
+const pg = require('pg')
 
-module.exports = new pg.Client(process.env.DB);
+module.exports = new pg.Client(process.env.DB)
 ```
 
 ### Commit
@@ -99,7 +96,7 @@ command like this in your commit message:
 [merkel up d12f99e4-710d-4d4a-94f8-13d9d121bac5]
 ```
 
-This command will later be parsed by `merkel migrate`. 
+This command will later be parsed by `merkel migrate`.
 
 ### Migrate
 
@@ -134,11 +131,12 @@ Pending migrations:
 
 If a migration fails (throws an exception / returns a rejected promise), the schema your source files expect doesn't
 match your database schema anymore. You now have two options:
- - Quickly fix the migration file in a separate commit.
-   That commit message should _not_ include any `merkel` command.
-   The next `merkel migrate` execution will then start where it migration chain broke and will still run the migration
-   files in the order they were specified in the commit messages, but with the newest version of the migration file.
- - Completely revert the deployment to the previous state, see reverting migrations
+
+* Quickly fix the migration file in a separate commit.
+  That commit message should _not_ include any `merkel` command.
+  The next `merkel migrate` execution will then start where it migration chain broke and will still run the migration
+  files in the order they were specified in the commit messages, but with the newest version of the migration file.
+* Completely revert the deployment to the previous state, see reverting migrations
 
 ### What if I need to revert a deployment?
 
@@ -208,8 +206,6 @@ TypeScript definitions are included.
 
 Currently only PostgreSQL. [pg](https://github.com/brianc/node-postgres) version ^6 must be installed in your project.
 
-
----------------------------------------------------------------------
-
+---
 
 > _Wir schaffen das._ – Angela Merkel
