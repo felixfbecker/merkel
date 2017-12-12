@@ -12,13 +12,14 @@ services:
 
 env:
   global:
+    - PGUSER=postgres
     - MERKEL_DB=postgres://postgres@localhost:5432/merkel_test
 
 install:
   - npm install
 
 script:
-  - psql -c 'CREATE DATABASE merkel_test;' -U postgres
+  - createdb merkel_test
   - git config --global user.email 'whatever@whatever.com'
   - git config --global user.name 'whatever'
   - npm run build
