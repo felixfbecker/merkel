@@ -32,7 +32,7 @@ before_test:
 
 test_script:
   # Coverage doesn't work because of https://github.com/tapjs/spawn-wrap/issues/69
-  - npm test
+  - npm test -- --colors
 
 after_test:
   - ps: |
