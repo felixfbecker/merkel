@@ -31,7 +31,8 @@ before_test:
   - git config --global user.name "Your Name"
 
 test_script:
-  - npm run cover
+  # Coverage doesn't work because of https://github.com/tapjs/spawn-wrap/issues/69
+  - npm test
 
 after_test:
   - ps: |
