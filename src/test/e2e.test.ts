@@ -10,8 +10,6 @@ import * as pg from 'pg';
 import * as del from 'del';
 import * as path from 'path';
 
-const PATH = path.resolve(__dirname + '/../../bin') + path.delimiter + process.env.PATH;
-
 describe('E2E', () => {
     let client: pg.Client;
     const repo = tmpdir() + '/merkel_test_repo';
@@ -49,7 +47,7 @@ describe('E2E', () => {
         await execFile('git', ['config', 'user.email', 'whatever@whatever.com']);
         await execFile('git', ['config', 'user.name', 'whatever']);
         await execFile('git', ['add', file, 'User.ts', '.merkelrc.json']);
-        await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`], {env: {PATH}});
+        await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`]);
         let status = await getStatus(adapter, await getHead());
         assert.equal(status.newCommits.length, 1);
         await status.executePendingTasks('migrations', adapter, SILENT_LOGGER);
@@ -58,7 +56,7 @@ describe('E2E', () => {
         await execFile('git', ['revert', '--no-commit', 'HEAD']);
         await execFile('git', ['reset', 'HEAD', 'migrations']);
         await execFile('git', ['checkout', '--', 'migrations']);
-        await execFile('git', ['commit', '-m', `Revert of User\n\n[merkel down ${uuid}]`], {env: {PATH}});
+        await execFile('git', ['commit', '-m', `Revert of User\n\n[merkel down ${uuid}]`]);
         const downStatus = await getStatus(adapter, await getHead());
         assert.equal(downStatus.newCommits.length, 1);
         await downStatus.executePendingTasks('migrations', adapter, SILENT_LOGGER);
@@ -73,7 +71,7 @@ describe('E2E', () => {
         await fs.access(file).catch(() => new AssertionError({message: 'migration file not created'}));
         await fs.writeFile(file, await fs.readFile(__dirname + '/migrations/test_migration.js'));
         await execFile('git', ['add', file, '.merkelrc.json']);
-        await execFile('git', ['commit', '-m', `migration in a new folder\n\n[merkel up ${uuid}]`], {env: {PATH}});
+        await execFile('git', ['commit', '-m', `migration in a new folder\n\n[merkel up ${uuid}]`]);
         status = await getStatus(adapter, await getHead());
         assert.equal(status.newCommits.length, 1);
         await status.executePendingTasks('migrations', adapter, SILENT_LOGGER);
