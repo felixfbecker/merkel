@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@sourcegraph/prettierrc": "^2.0.0",
-    "@sourcegraph/tslint-config": "^9.0.4",
+    "@sourcegraph/tslint-config": "^10.0.0",
     "@types/chai": "^4.0.10",
     "@types/chai-as-promised": "^7.1.0",
     "@types/del": "^3.0.0",
