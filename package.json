@@ -29,7 +29,7 @@
   "license": "ISC",
   "dependencies": {
     "chalk": "^2.3.0",
-    "inquirer": "^4.0.0",
+    "inquirer": "^5.0.0",
     "mkdirp": "^0.5.1",
     "mz": "^2.4.0",
     "sql-template-strings": "^2.2.0",
