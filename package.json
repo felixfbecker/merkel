@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "@sourcegraph/prettierrc": "^2.0.0",
-    "@sourcegraph/tslint-config": "^9.0.4",
+    "@sourcegraph/tslint-config": "^10.0.0",
     "@types/chai": "^4.0.10",
     "@types/chai-as-promised": "^7.1.0",
     "@types/del": "^3.0.0",
@@ -58,12 +58,12 @@
     "cz-conventional-changelog": "^2.0.0",
     "del": "^3.0.0",
     "husky": "^0.14.3",
-    "mocha": "^4.0.1",
+    "mocha": "^5.0.0",
     "nyc": "^11.3.0",
     "pg": "^7.4.0",
     "prettier": "1.10.0",
     "rimraf": "^2.5.4",
-    "semantic-release": "^11.0.2",
+    "semantic-release": "^12.2.2",
     "sinon": "^4.1.2",
     "source-map-support": "^0.5.0",
     "tslint": "^5.8.0",
@@ -75,12 +75,6 @@
     "commitizen": {
       "path": "./node_modules/cz-conventional-changelog"
     }
-  },
-  "release": {
-    "verifyConditions": [
-      "@semantic-release/npm",
-      "@semantic-release/github"
-    ]
   },
   "nyc": {
     "include": [
