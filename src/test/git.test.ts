@@ -19,7 +19,8 @@ import {
     parseGitLog,
     UnknownCommitError,
 } from '../git'
-import { createConfig } from '../index'
+import { createConfig, TaskList } from '../index'
+
 useChaiPlugin(chaiAsPromised)
 const repo = path.join(tmpdir(), 'merkel_test_repo')
 console.log(repo)
@@ -256,7 +257,7 @@ describe('git', () => {
                     },
                     type: 'up',
                 },
-            ])
+            ] as TaskList)
         })
     })
     after(() => del('.git'))
