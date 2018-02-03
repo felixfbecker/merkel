@@ -7,7 +7,7 @@ Handles your database migration crisis
 [![linux build](https://img.shields.io/travis/felixfbecker/merkel/master.svg?label=linux+build)](https://travis-ci.org/felixfbecker/merkel)
 [![windows build](https://img.shields.io/appveyor/ci/felixfbecker/merkel/master.svg?label=windows+build)](https://ci.appveyor.com/project/felixfbecker/merkel/branch/master)
 [![codecov](https://codecov.io/gh/felixfbecker/merkel/branch/master/graph/badge.svg?token=BuoxrgBs54)](https://codecov.io/gh/felixfbecker/merkel)
-[![dependencies](https://gemnasium.com/badges/github.com/felixfbecker/merkel.svg)](https://gemnasium.com/github.com/felixfbecker/merkel)
+[![dependencies Status](https://david-dm.org/felixfbecker/merkel/status.svg)](https://david-dm.org/felixfbecker/merkel)
 ![node](https://img.shields.io/node/v/merkel.svg)
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
@@ -66,15 +66,15 @@ Example:
 const db = require('../db')
 
 exports.up = function up() {
-    return new Promise((resolve, reject) => db.connect(err => (err ? reject(err) : resolve()))).then(() =>
-        db.query('ALTER TABLE order_details RENAME COLUMN notes TO order_notes')
-    )
+  return new Promise((resolve, reject) => db.connect(err => (err ? reject(err) : resolve()))).then(() =>
+    db.query('ALTER TABLE order_details RENAME COLUMN notes TO order_notes')
+  )
 }
 
 exports.down = function down() {
-    return new Promise((resolve, reject) => db.connect(err => (err ? reject(err) : resolve()))).then(() =>
-        db.query('ALTER TABLE order_details RENAME COLUMN order_notes TO notes')
-    )
+  return new Promise((resolve, reject) => db.connect(err => (err ? reject(err) : resolve()))).then(() =>
+    db.query('ALTER TABLE order_details RENAME COLUMN order_notes TO notes')
+  )
 }
 ```
 
