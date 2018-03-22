@@ -63,7 +63,7 @@
     "pg": "^7.4.0",
     "prettier": "1.11.0",
     "rimraf": "^2.5.4",
-    "semantic-release": "^12.2.2",
+    "semantic-release": "^15.1.4",
     "sinon": "^4.1.2",
     "source-map-support": "^0.5.0",
     "tslint": "^5.8.0",
