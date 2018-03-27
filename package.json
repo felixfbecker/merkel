@@ -44,7 +44,7 @@
     "@types/chai-as-promised": "^7.1.0",
     "@types/del": "^3.0.0",
     "@types/globby": "^6.1.0",
-    "@types/inquirer": "0.0.35",
+    "@types/inquirer": "0.0.40",
     "@types/mkdirp": "^0.5.1",
     "@types/mocha": "^2.2.44",
     "@types/mz": "0.0.32",
