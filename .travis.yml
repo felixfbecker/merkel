@@ -15,8 +15,11 @@ env:
     - PGUSER=postgres
     - MERKEL_DB=postgres://postgres@localhost:5432/merkel_test
 
+before_install:
+  - npm install -g npm@6.0.0
+
 install:
-  - npm install
+  - npm ci
 
 script:
   - createdb merkel_test
