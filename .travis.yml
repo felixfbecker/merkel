@@ -26,6 +26,7 @@ script:
   - git config --global user.email 'whatever@whatever.com'
   - git config --global user.name 'whatever'
   - npm run build
+  - npm run lint
   - npm run cover -- --colors
   - nyc report --reporter=json
   - bash <(curl -s https://codecov.io/bash) -f coverage/coverage-final.json
