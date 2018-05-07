@@ -84,7 +84,7 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
             throw new UnknownCommitError(since)
         }
     }
-    if (!await hasHead()) {
+    if (!(await hasHead())) {
         return new CommitSequence()
     }
     // check if the HEAD is behind the last migration

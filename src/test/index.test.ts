@@ -36,7 +36,7 @@ describe('index', () => {
     })
     describe('isMerkelRepository', () => {
         it('should find merkel repositorys by the .merkelrc.json', async () => {
-            assert(!await isMerkelRepository(), 'a repo without config was thought to be a merkel repository')
+            assert(!(await isMerkelRepository()), 'a repo without config was thought to be a merkel repository')
             await createConfig({
                 migrationDir: 'test',
                 migrationOutDir: 'test_out',
