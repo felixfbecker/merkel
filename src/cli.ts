@@ -81,7 +81,12 @@ yargs.command(
             } catch (err) {
                 // ignore
             }
-            const { migrationDir, migrationOutDir, shouldAddGitHook, initMetaNow } = await inquirer.prompt([
+            const { migrationDir, migrationOutDir, shouldAddGitHook, initMetaNow } = await inquirer.prompt<{
+                migrationDir: string
+                migrationOutDir: string
+                shouldAddGitHook: boolean
+                initMetaNow: boolean
+            }>([
                 {
                     name: 'migrationDir',
                     message: tsconfig ? 'Directory for new migration files:' : 'Directory for migration files:',
@@ -270,7 +275,7 @@ yargs.command(
             process.stdout.write(status.toString())
             if (status.newCommits.some(commit => commit.tasks.length > 0)) {
                 if (argv.confirm) {
-                    const answer = await inquirer.prompt({
+                    const answer = await inquirer.prompt<{ continue: boolean }>({
                         type: 'confirm',
                         name: 'continue',
                         message: 'Continue?',
