@@ -195,6 +195,7 @@ export function parseGitLog(gitLog: string): CommitSequence {
     for (const s of commitStrings) {
         const splitMatch = s.match(/^(\w+)\n((?:.|\n|\r)*)$/)
         if (!splitMatch) {
+            /* istanbul ignore next */
             throw new GitParseError()
         }
         let [, sha1, message] = splitMatch
