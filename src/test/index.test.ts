@@ -167,10 +167,14 @@ describe('index', () => {
     describe('Status', () => {
         describe('toString', () => {
             it('should print the repositories current status', () => {
-                const status = new Status(new Commit('0c0302301'), new CommitSequence())
+                const status = new Status({
+                    head: new Commit({ sha1: '0c0302301' }),
+                    newCommits: new CommitSequence(),
+                    lastTask: null,
+                })
                 const tasks = new TaskList()
                 tasks.push(new Task(undefined, 'up', new Migration('user')))
-                const commit = new Commit('0c0302301')
+                const commit = new Commit({ sha1: '0c0302301' })
                 commit.tasks = tasks
                 status.newCommits.push(commit)
                 const output = status.toString()
@@ -180,18 +184,18 @@ describe('index', () => {
                 assert(output.includes('▲ UP   user'))
             })
             it('should print the last task', () => {
-                const status = new Status(
-                    new Commit('0c0302301', 'top'),
-                    new CommitSequence(),
-                    new Task(
+                const status = new Status({
+                    head: new Commit({ sha1: '0c0302301', message: 'top' }),
+                    newCommits: new CommitSequence(),
+                    lastTask: new Task(
                         1,
                         'up',
                         new Migration('user'),
-                        new Commit('9913944', 'initial'),
-                        new Commit('9991920', 'header'),
+                        new Commit({ sha1: '9913944', message: 'initial' }),
+                        new Commit({ sha1: '9991920', message: 'header' }),
                         new Date(0)
-                    )
-                )
+                    ),
+                })
                 const output = status.toString()
                 assert.include(output, '▲ UP   user')
                 assert.include(output, new Date(0).toString())

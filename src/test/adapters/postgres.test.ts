@@ -10,18 +10,19 @@ useChaiPlugin(chaiAsPromised)
 describe('PostgresAdapter', () => {
     let client: pg.Client
     let adapter: PostgresAdapter
-    if (!process.env.MERKEL_DB) {
+    const MERKEL_DB = process.env.MERKEL_DB
+    if (!MERKEL_DB) {
         throw new Error('Cannot run tests without MERKEL_DB set')
     }
     before(async () => {
-        client = new pg.Client({ connectionString: process.env.MERKEL_DB })
+        client = new pg.Client({ connectionString: MERKEL_DB })
         await new Promise<void>((resolve, reject) => client.connect(err => (err ? reject(err) : resolve())))
     })
     after(() => client.end())
     beforeEach(async () => {
         await client.query('DROP TABLE IF EXISTS "merkel_meta"')
         await client.query('DROP TYPE IF EXISTS "merkel_migration_type"')
-        adapter = new PostgresAdapter(process.env.MERKEL_DB!, pg)
+        adapter = new PostgresAdapter(MERKEL_DB, pg)
         await adapter.init()
     })
     afterEach(async () => {
@@ -57,8 +58,8 @@ describe('PostgresAdapter', () => {
                 undefined,
                 'up',
                 new Migration('testlog'),
-                new Commit('1234'),
-                new Commit('2345'),
+                new Commit({ sha1: '1234' }),
+                new Commit({ sha1: '2345' }),
                 date
             )
             await adapter.logMigrationTask(task)
@@ -70,7 +71,14 @@ describe('PostgresAdapter', () => {
         it('should get the latest migration task', async () => {
             const date = new Date(Date.now())
             await adapter.logMigrationTask(
-                new Task(undefined, 'up', new Migration('test'), new Commit('123'), new Commit('234'), date)
+                new Task(
+                    undefined,
+                    'up',
+                    new Migration('test'),
+                    new Commit({ sha1: '123' }),
+                    new Commit({ sha1: '234' }),
+                    date
+                )
             )
             const task = await adapter.getLastMigrationTask()
             assert.deepEqual<any>(task, {
@@ -99,8 +107,8 @@ describe('PostgresAdapter', () => {
                 undefined,
                 'up',
                 new Migration('test'),
-                new Commit('1'),
-                new Commit('2'),
+                new Commit({ sha1: '1' }),
+                new Commit({ sha1: '2' }),
                 new Date(Date.now())
             )
             await adapter.logMigrationTask(upTask)
@@ -111,8 +119,8 @@ describe('PostgresAdapter', () => {
                 undefined,
                 'down',
                 new Migration('test'),
-                new Commit('1'),
-                new Commit('2'),
+                new Commit({ sha1: '1' }),
+                new Commit({ sha1: '2' }),
                 new Date(Date.now())
             )
             await adapter.logMigrationTask(downTask)
@@ -123,8 +131,8 @@ describe('PostgresAdapter', () => {
                 undefined,
                 'down',
                 new Migration('test'),
-                new Commit('1'),
-                new Commit('2'),
+                new Commit({ sha1: '1' }),
+                new Commit({ sha1: '2' }),
                 new Date(Date.now())
             )
             await assert.isRejected(adapter.checkIfTaskCanExecute(task), FirstDownMigrationError)

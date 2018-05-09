@@ -35,8 +35,8 @@ export abstract class DbAdapter {
             row.id,
             row.type,
             new Migration(row.name),
-            new Commit(row.commit),
-            new Commit(row.head),
+            new Commit({ sha1: row.commit }),
+            new Commit({ sha1: row.head }),
             row.applied_at
         )
         return task

@@ -26,6 +26,10 @@ export class CommitSequence extends Array<Commit> {
 }
 
 export class Commit {
+    /** The commit SHA1 */
+    public sha1: string
+    /** The commit message, without tasks */
+    public message?: string
     /** Migrations that should be run, in the order they were defined in the commit message */
     public tasks: TaskList = new TaskList()
 
@@ -39,12 +43,13 @@ export class Commit {
         return this.message && this.message.split('\n', 1)[0]
     }
 
-    constructor(
-        /** The commit SHA1 */
-        public sha1: string,
-        /** The commit message, without tasks */
-        public message?: string
-    ) {}
+    constructor(options: { sha1: string; message?: string; tasks?: TaskList }) {
+        this.sha1 = options.sha1
+        this.message = options.message
+        if (options.tasks) {
+            this.tasks = options.tasks
+        }
+    }
 
     /**
      * Loads more info by using `git show <sha1>`
@@ -209,7 +214,7 @@ export function parseGitLog(gitLog: string): CommitSequence {
               )
             : []
         // strip commands from message
-        const commit = new Commit(sha1, message.replace(regExp, '').trim())
+        const commit = new Commit({ sha1, message: message.replace(regExp, '').trim() })
         for (const command of commands) {
             const type = command.shift() as TaskType
             for (const name of command) {
@@ -227,7 +232,7 @@ export function parseGitLog(gitLog: string): CommitSequence {
 export async function getHead(): Promise<Commit> {
     try {
         const [stdout] = await execFile('git', ['rev-parse', 'HEAD'])
-        return new Commit(stdout.trim())
+        return new Commit({ sha1: stdout.trim() })
     } catch (err) {
         throw new NoCommitsError(err.message)
     }
