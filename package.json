@@ -28,12 +28,12 @@
   "author": "Felix Becker <felix.b@outlook.com>",
   "license": "ISC",
   "dependencies": {
-    "chalk": "^2.4.1",
-    "inquirer": "^5.2.0",
+    "chalk": "^2.3.0",
+    "inquirer": "^5.0.0",
     "mkdirp": "^0.5.1",
     "mz": "^2.4.0",
     "sql-template-strings": "^2.2.0",
-    "update-notifier": "^2.5.0",
+    "update-notifier": "^2.3.0",
     "uuid": "^3.1.0",
     "yargs": "^11.0.0"
   },
