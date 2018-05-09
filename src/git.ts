@@ -31,7 +31,7 @@ export class Commit {
     /** The commit message, without tasks */
     public message?: string
     /** Migrations that should be run, in the order they were defined in the commit message */
-    public tasks: TaskList = new TaskList()
+    public tasks: TaskList
 
     /** The first 6 letters of the SHA1 */
     public get shortSha1(): string {
@@ -46,9 +46,7 @@ export class Commit {
     constructor(options: { sha1: string; message?: string; tasks?: TaskList }) {
         this.sha1 = options.sha1
         this.message = options.message
-        if (options.tasks) {
-            this.tasks = options.tasks
-        }
+        this.tasks = options.tasks || new TaskList()
     }
 
     /**

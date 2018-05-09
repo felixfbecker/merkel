@@ -21,7 +21,9 @@ import { Migration, Task, TaskType } from './migration'
 const pkg = require('../package.json')
 require('update-notifier')({ pkg }).notify()
 
-export class MigrationDirNotSpecifiedError extends Error {}
+export class MigrationDirNotSpecifiedError extends Error {
+    public name = 'MigrationDirNotSpecifiedError'
+}
 
 interface Config {
     migrationDir?: string
