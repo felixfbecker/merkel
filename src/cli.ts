@@ -7,10 +7,21 @@ import * as yargs from 'yargs'
 import { createAdapterFromUrl } from './adapter'
 import { getHead } from './git'
 import { addGitHook, HookAlreadyFoundError } from './git'
-import { createConfig, createMigrationDir, generate, getStatus, isMerkelRepository, prepareCommitMsg } from './index'
+import {
+    createConfig,
+    createMigrationDir,
+    generate,
+    getConfigurationForCommit,
+    getStatus,
+    isMerkelRepository,
+    prepareCommitMsg,
+} from './index'
 import { Migration, Task, TaskType } from './migration'
+
 const pkg = require('../package.json')
 require('update-notifier')({ pkg }).notify()
+
+export class MigrationDirNotSpecifiedError extends Error {}
 
 interface Config {
     migrationDir?: string
@@ -129,7 +140,7 @@ yargs.command(
             })
             process.stdout.write(`Created ${chalk.cyan(path.join('.', '.merkelrc.json'))}\n`)
             if (initMetaNow) {
-                await createAdapterFromUrl(argv.db).init()
+                await createAdapterFromUrl(argv.db!).init()
             }
             // add git hook
             if (shouldAddGitHook) {
@@ -189,7 +200,7 @@ yargs.command(
 
 type CommitSource = 'template' | 'message' | 'merge' | 'squash' | 'commit'
 interface PrepareCommitMsgArgv extends Argv {
-    msgfile: string
+    msgfile?: string
     /**
      * source of the commit message, and can be:
      *  - message (if a -m or -F option was given)
@@ -207,13 +218,13 @@ yargs.command(
     false,
     {
         migrationDir: {
-            required: true,
+            demandOption: true,
         },
     },
     async (argv: PrepareCommitMsgArgv) => {
         try {
             if (argv.source !== 'message') {
-                await prepareCommitMsg(argv.msgfile, argv.migrationDir)
+                await prepareCommitMsg(argv.msgfile!, argv.migrationDir!)
             }
             process.exit(0)
         } catch (err) {
@@ -224,7 +235,7 @@ yargs.command(
 )
 
 interface StatusArgv extends Argv {
-    db: string
+    db?: string
 }
 
 yargs.command(
@@ -233,7 +244,7 @@ yargs.command(
     { db: dbOption },
     async (argv: StatusArgv) => {
         try {
-            const adapter = createAdapterFromUrl(argv.db)
+            const adapter = createAdapterFromUrl(argv.db!)
             await adapter.init()
             const head = await getHead()
             const status = await getStatus(adapter, head)
@@ -250,8 +261,8 @@ yargs.command(
 )
 
 interface MigrateArgv extends Argv {
-    db: string
-    confirm: boolean
+    db?: string
+    confirm?: boolean
 }
 
 yargs.command(
@@ -268,7 +279,7 @@ yargs.command(
     },
     async (argv: MigrateArgv) => {
         try {
-            const adapter = createAdapterFromUrl(argv.db)
+            const adapter = createAdapterFromUrl(argv.db!)
             await adapter.init()
             const head = await getHead()
             const status = await getStatus(adapter, head)
@@ -291,7 +302,7 @@ yargs.command(
                     for (const task of commit.tasks) {
                         process.stdout.write(task.toString() + ' ...')
                         const interval = setInterval(() => process.stdout.write('.'), 100)
-                        await task.execute(argv.migrationOutDir, adapter, head, commit)
+                        await task.execute(argv.migrationOutDir!, adapter, head, commit)
                         clearInterval(interval)
                         process.stdout.write(' Success\n')
                     }
@@ -307,21 +318,24 @@ yargs.command(
 )
 
 interface MigrationCommandArgv extends Argv {
-    migrations: string[]
-    db: string
+    migrations?: string[]
+    db?: string
 }
 
 const migrationCommand = (type: TaskType) => async (argv: MigrationCommandArgv) => {
     try {
-        const adapter = createAdapterFromUrl(argv.db)
+        const adapter = createAdapterFromUrl(argv.db!)
         await adapter.init()
         const head = await getHead()
-        for (const name of argv.migrations) {
-            const task = new Task({ type, migration: new Migration({ name }) })
+        for (const name of argv.migrations!) {
+            const task = new Task(undefined, type, new Migration(name))
             process.stdout.write(`${task.toString()} ...`)
             const interval = setInterval(() => process.stdout.write('.'), 100)
-            await task.execute(argv.migrationOutDir, adapter, head)
-            clearInterval(interval)
+            try {
+                await task.execute(argv.migrationOutDir!, adapter, head)
+            } finally {
+                clearInterval(interval)
+            }
             process.stdout.write(' Success\n')
         }
         process.stdout.write('\n' + chalk.green.bold('Migration successful') + '\n')
@@ -359,7 +373,18 @@ yargs.command(
     },
     async (argv: GenerateArgv) => {
         try {
-            const migrationDir = path.resolve(argv.migrationDir)
+            let migrationDir: string | undefined
+            if (argv.migrationDir) {
+                migrationDir = path.resolve(argv.migrationDir)
+            } else {
+                const configuration = await getConfigurationForCommit(await getHead())
+                if (configuration) {
+                    migrationDir = configuration.migrationDir
+                }
+            }
+            if (!migrationDir) {
+                throw new MigrationDirNotSpecifiedError()
+            }
             await generate({
                 name: argv.name,
                 migrationDir,

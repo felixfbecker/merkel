@@ -46,12 +46,10 @@ export class UnknownTaskTypeError extends Error {
 }
 
 export class Migration {
-    /** The name of the migration */
-    public name: string
-
-    constructor(options?: { name?: string }) {
-        Object.assign(this, options)
-    }
+    constructor(
+        /** The name of the migration */
+        public name: string
+    ) {}
 
     /**
      * @param migrationDir The migration directory
@@ -92,7 +90,7 @@ export class TaskList extends Array<Task> {
         return str.trim()
     }
 
-    public async execute(migrationDir: string, adapter: DbAdapter, head: Commit, commit?: Commit): Promise<void> {
+    public async execute(migrationDir: string, adapter: DbAdapter, head?: Commit, commit?: Commit): Promise<void> {
         for (const task of this) {
             await task.execute(migrationDir, adapter, head, commit)
         }
@@ -100,48 +98,38 @@ export class TaskList extends Array<Task> {
 }
 
 export class Task {
-    /** The function that was executed */
-    public type: TaskType
-
-    /** The migration that was run */
-    public migration: Migration
-
-    // If the task was already executed:
-
-    /** The sequential id of the task entry in the database */
-    public id: number
-
-    /** The commit that triggered the task, if triggered by a commit */
-    public commit: Commit
-
-    /** The git HEAD at the time the task was executed */
-    public head: Commit
-
-    /** The date when the migration was applied if already executed */
-    public appliedAt: Date
-
-    constructor(options?: {
-        id?: number
-        type?: TaskType
-        migration?: Migration
-        commit?: Commit
-        head?: Commit
-        appliedAt?: Date
-    }) {
-        Object.assign(this, options)
-    }
+    constructor(
+        // If the task was already executed:
+        /** The sequential id of the task entry in the database */
+        public id: number | undefined,
+        /** The function that was executed */
+        public type: TaskType,
+        /** The migration that was run */
+        public migration: Migration,
+        /** The commit that triggered the task, if triggered by a commit */
+        public commit?: Commit,
+        /** The git HEAD at the time the task was executed */
+        public head?: Commit,
+        /** The date when the migration was applied if already executed */
+        public appliedAt?: Date
+    ) {}
 
     public invert(): Task {
-        return Object.assign(new Task(this), {
-            type: ({ up: 'down', down: 'up' } as any)[this.type],
-        })
+        return new Task(
+            this.id,
+            this.type === 'up' ? 'down' : 'up',
+            this.migration,
+            this.commit,
+            this.head,
+            this.appliedAt
+        )
     }
 
     /**
      * Executes the task
      * @param migrationDir the fallback folder to search the migration in if no merkelrc can be found
      */
-    public async execute(migrationDir: string, adapter: DbAdapter, head: Commit, commit?: Commit): Promise<void> {
+    public async execute(migrationDir: string, adapter: DbAdapter, head?: Commit, commit?: Commit): Promise<void> {
         await adapter.checkIfTaskCanExecute(this)
         let migrationExports: any
         if (commit) {
@@ -160,7 +148,7 @@ export class Task {
             throw new TaskTypeNotFoundError(this.migration, this.type, migrationDir)
         }
         try {
-            let exceptionHandler: () => void
+            let exceptionHandler: (() => void) | undefined
             try {
                 await Promise.race([
                     new Promise<never>((resolve, reject) => {
@@ -170,7 +158,9 @@ export class Task {
                     Promise.resolve(migrationExports[this.type]()),
                 ])
             } finally {
-                process.removeListener('uncaughtException', exceptionHandler)
+                if (exceptionHandler) {
+                    process.removeListener('uncaughtException', exceptionHandler)
+                }
             }
         } catch (err) {
             throw new MigrationExecutionError(err)

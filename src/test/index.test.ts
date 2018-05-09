@@ -16,6 +16,7 @@ import {
     prepareCommitMsg,
     SILENT_LOGGER,
     Status,
+    TemplateNotFoundError,
 } from '../index'
 import { Migration, Task, TaskList } from '../migration'
 useChaiPlugin(chaiAsPromised)
@@ -119,15 +120,18 @@ describe('index', () => {
                 MigrationAlreadyExistsError
             )
         })
-        it('should not crash if template does not exist', async () => {
+        it('should crash if template does not exist', async () => {
             await createMigrationDir('test')
-            await generate(
-                {
-                    migrationDir: 'test',
-                    name: 'test',
-                    template: 'none',
-                },
-                SILENT_LOGGER
+            await assert.isRejected(
+                generate(
+                    {
+                        migrationDir: 'test',
+                        name: 'test',
+                        template: 'none',
+                    },
+                    SILENT_LOGGER
+                ),
+                TemplateNotFoundError
             )
         })
     })
@@ -163,20 +167,11 @@ describe('index', () => {
     describe('Status', () => {
         describe('toString', () => {
             it('should print the repositories current status', () => {
-                const status = new Status()
-                status.head = new Commit({ sha1: '0c0302301' })
-                status.newCommits = new CommitSequence()
+                const status = new Status(new Commit('0c0302301'), new CommitSequence())
                 const tasks = new TaskList()
-                tasks.push(
-                    new Task({
-                        type: 'up',
-                        migration: new Migration({ name: 'user' }),
-                    })
-                )
-                const commit = new Commit({
-                    sha1: '0c0302301',
-                    tasks,
-                })
+                tasks.push(new Task(undefined, 'up', new Migration('user')))
+                const commit = new Commit('0c0302301')
+                commit.tasks = tasks
                 status.newCommits.push(commit)
                 const output = status.toString()
                 assert(output.includes('Last migration:      No migration run yet'))
@@ -185,22 +180,18 @@ describe('index', () => {
                 assert(output.includes('▲ UP   user'))
             })
             it('should print the last task', () => {
-                const status = new Status()
-                status.head = new Commit({ sha1: '0c0302301', message: 'top' })
-                status.lastTask = new Task({
-                    type: 'up',
-                    appliedAt: new Date(0),
-                    commit: new Commit({
-                        sha1: '9913944',
-                        message: 'initial',
-                    }),
-                    head: new Commit({
-                        sha1: '9991920',
-                        message: 'header',
-                    }),
-                    migration: new Migration({ name: 'user' }),
-                })
-                status.newCommits = new CommitSequence()
+                const status = new Status(
+                    new Commit('0c0302301', 'top'),
+                    new CommitSequence(),
+                    new Task(
+                        1,
+                        'up',
+                        new Migration('user'),
+                        new Commit('9913944', 'initial'),
+                        new Commit('9991920', 'header'),
+                        new Date(0)
+                    )
+                )
                 const output = status.toString()
                 assert.include(output, '▲ UP   user')
                 assert.include(output, new Date(0).toString())

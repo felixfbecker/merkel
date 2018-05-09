@@ -32,6 +32,9 @@ describe('E2E', () => {
     })
     it('should behave properly', async function(): Promise<void> {
         this.timeout(10000)
+        if (!process.env.MERKEL_DB) {
+            throw new Error('Cant run E2E tests without MERKEL_DB set')
+        }
         const adapter = createAdapterFromUrl(process.env.MERKEL_DB)
         await adapter.init()
         await execFile('git', ['init'])

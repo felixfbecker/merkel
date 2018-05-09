@@ -25,33 +25,27 @@ export interface TableRow {
 
 export abstract class DbAdapter {
     public abstract init(): Promise<void>
-    public abstract getLastMigrationTask(): Promise<Task>
+    public abstract getLastMigrationTask(): Promise<Task | null>
     public abstract logMigrationTask(task: Task): Promise<void>
     public abstract checkIfTaskCanExecute(task: Task): Promise<void>
     public abstract close(): Promise<void>
 
     protected rowToTask(row: TableRow): Task {
-        const task = new Task({
-            id: row.id,
-            type: row.type,
-            appliedAt: row.applied_at,
-            commit: new Commit({
-                sha1: row.commit,
-            }),
-            head: new Commit({
-                sha1: row.head,
-            }),
-            migration: new Migration({
-                name: row.name,
-            }),
-        })
+        const task = new Task(
+            row.id,
+            row.type,
+            new Migration(row.name),
+            new Commit(row.commit),
+            new Commit(row.head),
+            row.applied_at
+        )
         return task
     }
 }
 
 import { PostgresAdapter } from './adapters/postgres'
 export function createAdapterFromUrl(url: string): DbAdapter {
-    const dialect = parse(url).protocol
+    const dialect = parse(url).protocol as string | null
     switch (dialect) {
         case 'postgres:':
             try {
