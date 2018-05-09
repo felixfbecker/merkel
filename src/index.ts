@@ -34,14 +34,18 @@ export class TemplateNotFoundError extends Error {
 }
 
 export class Status {
-    constructor(
-        /** The current HEAD commit of the repository */
-        public head: Commit,
-        /** New commits since the last migration */
-        public newCommits: CommitSequence,
-        /** The last migration task that was executed, according to the merkel metadata table */
-        public lastTask: Task | null = null
-    ) {}
+    /** The current HEAD commit of the repository */
+    public head: Commit
+    /** New commits since the last migration */
+    public newCommits: CommitSequence
+    /** The last migration task that was executed, according to the merkel metadata table */
+    public lastTask: Task | null = null
+
+    constructor(options: { head: Commit; newCommits: CommitSequence; lastTask: Task | null }) {
+        this.head = options.head
+        this.newCommits = options.newCommits
+        this.lastTask = options.lastTask
+    }
 
     /** Executes all tasks for newCommits */
     public async executePendingTasks(
@@ -125,16 +129,18 @@ export async function getStatus(adapter: DbAdapter, head?: Commit): Promise<Stat
         newCommits = await getNewCommits(lastTask.head)
         // Load commit messages
         await Promise.all(
-            [lastTask.commit, lastTask.head].filter(commit => !!commit).map(async commit => {
-                try {
-                    await commit!.loadSubject()
-                } catch (err) {
-                    /* istanbul ignore next */
-                    if (err.code !== 128) {
-                        throw err
+            [lastTask.commit, lastTask.head]
+                .filter((commit): commit is NonNullable<typeof commit> => !!commit)
+                .map(async commit => {
+                    try {
+                        await commit.loadSubject()
+                    } catch (err) {
+                        /* istanbul ignore next */
+                        if (err.code !== 128) {
+                            throw err
+                        }
                     }
-                }
-            })
+                })
         )
     } else {
         newCommits = await getNewCommits()
@@ -142,7 +148,7 @@ export async function getStatus(adapter: DbAdapter, head?: Commit): Promise<Stat
     if (head) {
         await head.loadSubject()
     }
-    return new Status(head, newCommits, lastTask)
+    return new Status({ head, newCommits, lastTask })
 }
 
 export interface Logger {

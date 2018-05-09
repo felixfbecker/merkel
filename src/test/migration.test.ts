@@ -138,8 +138,8 @@ describe('migration', () => {
         describe('execute()', () => {
             it('should execute an up task', async () => {
                 const task = new Task(undefined, 'up', new Migration('test_migration'))
-                const head = new Commit('HEADCOMMITSHA1')
-                const trigger = new Commit('TRIGGERCOMMITSHA1')
+                const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
+                const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 await task.execute(__dirname + '/migrations', adapter, head, trigger)
                 // Check if table was created
                 const { rows } = await client.query(
@@ -149,8 +149,8 @@ describe('migration', () => {
             })
             it('should throw a MigrationNotFoundError if the migration is not existent', async () => {
                 const task = new Task(undefined, 'up', new Migration('not_found'))
-                const head = new Commit('HEADCOMMITSHA1')
-                const trigger = new Commit('TRIGGERCOMMITSHA1')
+                const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
+                const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 await assert.isRejected(
                     task.execute(__dirname + '/migrations', adapter, head, trigger),
                     MigrationNotFoundError
@@ -158,8 +158,8 @@ describe('migration', () => {
             })
             it('should throw a MigrationLoadError if the migration fails loading', async () => {
                 const task = new Task(undefined, 'up', new Migration('error_load'))
-                const head = new Commit('HEADCOMMITSHA1')
-                const trigger = new Commit('TRIGGERCOMMITSHA1')
+                const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
+                const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 await assert.isRejected(
                     task.execute(__dirname + '/migrations', adapter, head, trigger),
                     MigrationLoadError
@@ -167,8 +167,8 @@ describe('migration', () => {
             })
             it('should throw a TaskTypeNotFoundError if the migration has no up or down function', async () => {
                 const task = new Task(undefined, 'up', new Migration('no_up'))
-                const head = new Commit('HEADCOMMITSHA1')
-                const trigger = new Commit('TRIGGERCOMMITSHA1')
+                const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
+                const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 await assert.isRejected(
                     task.execute(__dirname + '/migrations', adapter, head, trigger),
                     TaskTypeNotFoundError
@@ -176,8 +176,8 @@ describe('migration', () => {
             })
             it('should throw a MigrationExecutionError when the migration returns a rejected promise', async () => {
                 const task = new Task(undefined, 'up', new Migration('error_async'))
-                const head = new Commit('HEADCOMMITSHA1')
-                const trigger = new Commit('TRIGGERCOMMITSHA1')
+                const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
+                const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 await assert.isRejected(
                     task.execute(__dirname + '/migrations', adapter, head, trigger),
                     MigrationExecutionError
@@ -185,8 +185,8 @@ describe('migration', () => {
             })
             it('should throw a MigrationExecutionError when the migration throws sync', async () => {
                 const task = new Task(undefined, 'up', new Migration('error_sync'))
-                const head = new Commit('HEADCOMMITSHA1')
-                const trigger = new Commit('TRIGGERCOMMITSHA1')
+                const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
+                const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 await assert.isRejected(
                     task.execute(__dirname + '/migrations', adapter, head, trigger),
                     MigrationExecutionError
@@ -194,8 +194,8 @@ describe('migration', () => {
             })
             it('should throw a MigrationExecutionError when the migration would crash the process', async () => {
                 const task = new Task(undefined, 'up', new Migration('error_crash'))
-                const head = new Commit('HEADCOMMITSHA1')
-                const trigger = new Commit('TRIGGERCOMMITSHA1')
+                const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
+                const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 let listener: ((error: Error) => void) | undefined
                 try {
                     listener = process.listeners('uncaughtException').pop()

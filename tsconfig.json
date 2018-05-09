@@ -7,7 +7,11 @@
     "outDir": "dist",
     "sourceMap": true,
     "declaration": true,
-    "strict": true
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true
   },
   "exclude": ["node_modules", "dist", "migrations"]
 }

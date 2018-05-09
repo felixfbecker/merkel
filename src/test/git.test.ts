@@ -146,7 +146,10 @@ describe('git', () => {
             })
         })
         it('should throw an UnknownCommitError when the since commit is unknown', async () => {
-            await assert.isRejected(getNewCommits(new Commit('whatever', 'commit message')), UnknownCommitError)
+            await assert.isRejected(
+                getNewCommits(new Commit({ sha1: 'whatever', message: 'commit message' })),
+                UnknownCommitError
+            )
         })
     })
     describe('getHead', () => {
