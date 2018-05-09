@@ -82,6 +82,7 @@ describe('E2E', () => {
         await status.executePendingTasks('migrations', adapter, SILENT_LOGGER)
         response = await client.query(`SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'new_table'`)
         assert.equal(response.rows.length, 1)
+        await adapter.close()
     })
     after(async () => await client.end())
 })
