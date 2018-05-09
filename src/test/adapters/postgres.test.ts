@@ -9,8 +9,9 @@ useChaiPlugin(chaiAsPromised)
 
 describe('PostgresAdapter', () => {
     let client: pg.Client
+    let adapter: PostgresAdapter
     if (!process.env.MERKEL_DB) {
-        throw new Error()
+        throw new Error('Cannot run tests without MERKEL_DB set')
     }
     before(async () => {
         client = new pg.Client({ connectionString: process.env.MERKEL_DB })
@@ -20,13 +21,14 @@ describe('PostgresAdapter', () => {
     beforeEach(async () => {
         await client.query('DROP TABLE IF EXISTS "merkel_meta"')
         await client.query('DROP TYPE IF EXISTS "merkel_migration_type"')
+        adapter = new PostgresAdapter(process.env.MERKEL_DB!, pg)
+        await adapter.init()
+    })
+    afterEach(async () => {
+        await adapter.close()
     })
     describe('init', () => {
         it('should create the database schema', async () => {
-            const adapter = new PostgresAdapter(process.env.MERKEL_DB!, pg)
-            await adapter.init()
-            const client = new pg.Client({ connectionString: process.env.MERKEL_DB })
-            await new Promise<void>((resolve, reject) => client.connect(err => (err ? reject(err) : resolve())))
             const { rows } = await client.query(
                 `SELECT column_name, data_type FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'merkel_meta' ORDER BY column_name ASC`
             )
@@ -38,20 +40,18 @@ describe('PostgresAdapter', () => {
                 { column_name: 'name', data_type: 'text' },
                 { column_name: 'type', data_type: 'USER-DEFINED' },
             ])
-            await client.end()
         })
         it('should not fail initializing twice', async () => {
-            let adapter = new PostgresAdapter(process.env.MERKEL_DB!, pg)
-            await adapter.init()
-            await adapter.close()
-            adapter = new PostgresAdapter(process.env.MERKEL_DB!, pg)
-            await adapter.init()
+            const secondAdapter = new PostgresAdapter(process.env.MERKEL_DB!, pg)
+            try {
+                await secondAdapter.init()
+            } finally {
+                await secondAdapter.close()
+            }
         })
     })
     describe('logMigrationTask', () => {
         it('should log migrations correctly', async () => {
-            const adapter = new PostgresAdapter(process.env.MERKEL_DB!, pg)
-            await adapter.init()
             const date = new Date(Date.now())
             const task = new Task(
                 undefined,
@@ -68,8 +68,6 @@ describe('PostgresAdapter', () => {
     })
     describe('getLastMigrationTask', () => {
         it('should get the latest migration task', async () => {
-            const adapter = new PostgresAdapter(process.env.MERKEL_DB!, pg)
-            await adapter.init()
             const date = new Date(Date.now())
             await adapter.logMigrationTask(
                 new Task(undefined, 'up', new Migration('test'), new Commit('123'), new Commit('234'), date)
@@ -97,8 +95,6 @@ describe('PostgresAdapter', () => {
     })
     describe('checkIfTaskCanExecute', async () => {
         it('should not run the same migration up twice', async () => {
-            const adapter = new PostgresAdapter(process.env.MERKEL_DB!, pg)
-            await adapter.init()
             const upTask = new Task(
                 undefined,
                 'up',
@@ -111,8 +107,6 @@ describe('PostgresAdapter', () => {
             await assert.isRejected(adapter.checkIfTaskCanExecute(upTask), MigrationRunTwiceError)
         })
         it('should not run the same migration down twice', async () => {
-            const adapter = new PostgresAdapter(process.env.MERKEL_DB!, pg)
-            await adapter.init()
             const downTask = new Task(
                 undefined,
                 'down',
@@ -125,8 +119,6 @@ describe('PostgresAdapter', () => {
             await assert.isRejected(adapter.checkIfTaskCanExecute(downTask), MigrationRunTwiceError)
         })
         it('should not run a down migration first', async () => {
-            const adapter = new PostgresAdapter(process.env.MERKEL_DB!, pg)
-            await adapter.init()
             const task = new Task(
                 undefined,
                 'down',

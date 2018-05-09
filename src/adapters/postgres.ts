@@ -22,16 +22,14 @@ export class PostgresAdapter extends DbAdapter {
      */
     public async init(): Promise<void> {
         await new Promise<void>((resolve, reject) => this.client.connect(err => (err ? reject(err) : resolve())))
-        try {
-            await this.client.query(`CREATE TYPE "merkel_migration_type" AS ENUM ('up', 'down')`)
-        } catch (err) {
-            /* istanbul ignore next */
-            if (~~err.code !== 42710) {
-                // duplicate object
-                throw err
-            }
-            // else ignore
-        }
+        await this.client.query(`
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'merkel_migration_type') THEN
+                    CREATE TYPE "merkel_migration_type" AS ENUM ('up', 'down');
+                END IF;
+            END$$
+        `)
         await this.client.query(`
             CREATE TABLE IF NOT EXISTS "merkel_meta" (
                 "id" SERIAL NOT NULL PRIMARY KEY,
