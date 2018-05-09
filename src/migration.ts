@@ -98,31 +98,45 @@ export class TaskList extends Array<Task> {
 }
 
 export class Task {
-    constructor(
-        // If the task was already executed:
-        /** The sequential id of the task entry in the database */
-        public id: number | undefined,
-        /** The function that was executed */
-        public type: TaskType,
-        /** The migration that was run */
-        public migration: Migration,
-        /** The commit that triggered the task, if triggered by a commit */
-        public commit?: Commit,
-        /** The git HEAD at the time the task was executed */
-        public head?: Commit,
-        /** The date when the migration was applied if already executed */
-        public appliedAt?: Date
-    ) {}
+    // If the task was already executed:
+    /** The sequential id of the task entry in the database */
+    public id: number | undefined
+    /** The function that was executed */
+    public type: TaskType
+    /** The migration that was run */
+    public migration: Migration
+    /** The commit that triggered the task, if triggered by a commit */
+    public commit?: Commit
+    /** The git HEAD at the time the task was executed */
+    public head?: Commit
+    /** The date when the migration was applied if already executed */
+    public appliedAt?: Date
+
+    constructor(options: {
+        id?: number
+        type: TaskType
+        migration: Migration
+        commit?: Commit
+        head?: Commit
+        appliedAt?: Date
+    }) {
+        this.id = options.id
+        this.type = options.type
+        this.migration = options.migration
+        this.commit = options.commit
+        this.head = options.head
+        this.appliedAt = options.appliedAt
+    }
 
     public invert(): Task {
-        return new Task(
-            this.id,
-            this.type === 'up' ? 'down' : 'up',
-            this.migration,
-            this.commit,
-            this.head,
-            this.appliedAt
-        )
+        return new Task({
+            id: this.id,
+            type: this.type === 'up' ? 'down' : 'up',
+            migration: this.migration,
+            commit: this.commit,
+            head: this.head,
+            appliedAt: this.appliedAt,
+        })
     }
 
     /**

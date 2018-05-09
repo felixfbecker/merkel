@@ -328,7 +328,7 @@ const migrationCommand = (type: TaskType) => async (argv: MigrationCommandArgv) 
         await adapter.init()
         const head = await getHead()
         for (const name of argv.migrations!) {
-            const task = new Task(undefined, type, new Migration(name))
+            const task = new Task({ type, migration: new Migration(name) })
             process.stdout.write(`${task.toString()} ...`)
             const interval = setInterval(() => process.stdout.write('.'), 100)
             try {
