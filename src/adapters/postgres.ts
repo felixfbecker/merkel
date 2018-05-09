@@ -55,7 +55,7 @@ export class PostgresAdapter extends DbAdapter {
     /**
      * Gets the last migration task that was executed
      */
-    public async getLastMigrationTask(): Promise<Task> {
+    public async getLastMigrationTask(): Promise<Task | null> {
         // find out the current database state
         const { rows } = await this.client.query(`
             SELECT "id", "name", "applied_at", "type", "commit", "head"
@@ -63,7 +63,7 @@ export class PostgresAdapter extends DbAdapter {
             ORDER BY "id" DESC
             LIMIT 1
         `)
-        return rows.length === 0 ? null : this.rowToTask(rows[0] as any)
+        return rows.length === 0 ? null : this.rowToTask(rows[0])
     }
 
     /**
@@ -76,7 +76,7 @@ export class PostgresAdapter extends DbAdapter {
                 ${task.migration.name},
                 ${task.type},
                 ${task.commit ? task.commit.sha1 : null},
-                ${task.head.sha1},
+                ${task.head ? task.head.sha1 : null},
                 ${task.appliedAt}
             )
             RETURNING id

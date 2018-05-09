@@ -27,15 +27,21 @@ export const SILENT_LOGGER: Logger = {
     error: (): void => undefined,
 }
 
+export class TemplateNotFoundError extends Error {
+    constructor(templateDir: string) {
+        super('Could not find template ' + templateDir)
+    }
+}
+
 export class Status {
-    /** The last migration task that was executed, according to the merkel metadata table */
-    public lastTask: Task
-
-    /** The current HEAD commit of the repository */
-    public head: Commit
-
-    /** New commits since the last migration */
-    public newCommits: CommitSequence
+    constructor(
+        /** The current HEAD commit of the repository */
+        public head: Commit,
+        /** New commits since the last migration */
+        public newCommits: CommitSequence,
+        /** The last migration task that was executed, according to the merkel metadata table */
+        public lastTask: Task | null = null
+    ) {}
 
     /** Executes all tasks for newCommits */
     public async executePendingTasks(
@@ -64,8 +70,12 @@ export class Status {
         if (this.lastTask) {
             str += `Last migration:      ${this.lastTask.toString()}\n`
             str += `Applied at:          ${this.lastTask.appliedAt}\n`
-            str += `Triggered by commit: ${this.lastTask.commit.toString()}\n`
-            str += `HEAD at execution:   ${this.lastTask.head.toString()}\n`
+            if (this.lastTask.commit) {
+                str += `Triggered by commit: ${this.lastTask.commit.toString()}\n`
+            }
+            if (this.lastTask.head) {
+                str += `HEAD at execution:   ${this.lastTask.head.toString()}\n`
+            }
         } else {
             str += `Last migration:      No migration run yet\n`
         }
@@ -109,16 +119,15 @@ export async function getStatus(adapter: DbAdapter, head?: Commit): Promise<Stat
     if (!head) {
         head = await getHead()
     }
-    const status = new Status()
-    status.lastTask = await adapter.getLastMigrationTask()
-    status.head = head
-    if (status.lastTask) {
-        status.newCommits = await getNewCommits(status.lastTask.head)
+    const lastTask = await adapter.getLastMigrationTask()
+    let newCommits: CommitSequence
+    if (lastTask) {
+        newCommits = await getNewCommits(lastTask.head)
         // Load commit messages
         await Promise.all(
-            [status.lastTask.commit, status.lastTask.head].map(async commit => {
+            [lastTask.commit, lastTask.head].filter(commit => !!commit).map(async commit => {
                 try {
-                    await commit.loadSubject()
+                    await commit!.loadSubject()
                 } catch (err) {
                     /* istanbul ignore next */
                     if (err.code !== 128) {
@@ -128,12 +137,12 @@ export async function getStatus(adapter: DbAdapter, head?: Commit): Promise<Stat
             })
         )
     } else {
-        status.newCommits = await getNewCommits()
+        newCommits = await getNewCommits()
     }
     if (head) {
         await head.loadSubject()
     }
-    return status
+    return new Status(head, newCommits, lastTask)
 }
 
 export interface Logger {
@@ -239,7 +248,7 @@ export async function generate(options: GenerateOptions, logger: Logger = CLI_LO
             if (err.code !== 'ENOENT') {
                 throw err
             }
-            logger.error(chalk.red('\nCould not find template ' + options.template + '\n'))
+            throw new TemplateNotFoundError(options.template)
         }
     } else {
         // detect tsconfig.json

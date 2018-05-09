@@ -16,6 +16,8 @@ export class UnknownCommitError extends Error {
     }
 }
 
+export class GitParseError extends Error {}
+
 export class CommitSequence extends Array<Commit> {
     /**
      * Wether the HEAD commit was before the last migration HEAD commit
@@ -24,12 +26,6 @@ export class CommitSequence extends Array<Commit> {
 }
 
 export class Commit {
-    /** The commit SHA1 */
-    public sha1: string
-
-    /** The commit message, without tasks */
-    public message: string
-
     /** Migrations that should be run, in the order they were defined in the commit message */
     public tasks: TaskList = new TaskList()
 
@@ -39,13 +35,16 @@ export class Commit {
     }
 
     /** The first line of the commit message */
-    public get subject(): string {
+    public get subject(): string | undefined {
         return this.message && this.message.split('\n', 1)[0]
     }
 
-    constructor(options?: { sha1?: string; message?: string; tasks?: TaskList }) {
-        Object.assign(this, options)
-    }
+    constructor(
+        /** The commit SHA1 */
+        public sha1: string,
+        /** The commit message, without tasks */
+        public message?: string
+    ) {}
 
     /**
      * Loads more info by using `git show <sha1>`
@@ -142,7 +141,7 @@ export async function getNewCommits(since?: Commit): Promise<CommitSequence> {
     return commits
 }
 
-export async function getConfigurationForCommit(commit: Commit): Promise<MerkelConfiguration> {
+export async function getConfigurationForCommit(commit: Commit): Promise<MerkelConfiguration | null> {
     if (commit.sha1) {
         try {
             const [merkelRc] = await execFile('git', ['show', `${commit.sha1}:.merkelrc.json`])
@@ -187,12 +186,16 @@ export function parseGitLog(gitLog: string): CommitSequence {
     if (gitLog === '') {
         return new CommitSequence()
     }
+    // drop first occurrence of ">>>>COMMIT" and split the remainder
     const commitStrings = gitLog.substr('>>>>COMMIT\n'.length).split('>>>>COMMIT\n')
     const commits = new CommitSequence()
     for (const s of commitStrings) {
-        let [, sha1, message] = s.match(/^(\w+)\n((?:.|\n|\r)*)$/)
+        const splitMatch = s.match(/^(\w+)\n((?:.|\n|\r)*)$/)
+        if (!splitMatch) {
+            throw new GitParseError()
+        }
+        let [, sha1, message] = splitMatch
         message = message.trim()
-        const commit = new Commit({ sha1 })
         // get commands from message
         const regExp = /\[\s*merkel[^\]]*\s*\]/g
         const match = message.match(regExp)
@@ -205,14 +208,14 @@ export function parseGitLog(gitLog: string): CommitSequence {
                       .slice(1)
               )
             : []
+        // strip commands from message
+        const commit = new Commit(sha1, message.replace(regExp, '').trim())
         for (const command of commands) {
             const type = command.shift() as TaskType
             for (const name of command) {
-                commit.tasks.push(new Task({ type, migration: new Migration({ name }), commit }))
+                commit.tasks.push(new Task(undefined, type, new Migration(name), commit))
             }
         }
-        // strip commands from message
-        commit.message = message.replace(regExp, '').trim()
         commits.push(commit)
     }
     return commits
@@ -224,12 +227,13 @@ export function parseGitLog(gitLog: string): CommitSequence {
 export async function getHead(): Promise<Commit> {
     try {
         const [stdout] = await execFile('git', ['rev-parse', 'HEAD'])
-        return new Commit({ sha1: stdout.trim() })
+        return new Commit(stdout.trim())
     } catch (err) {
         throw new NoCommitsError(err.message)
     }
 }
 
+/* Returns all migrations that have been (A)dded in the current commit */
 export async function getTasksForNewCommit(migrationDir: string): Promise<TaskList> {
     migrationDir = resolve(migrationDir)
     const [stdout] = await execFile('git', ['diff', '--staged', '--name-status'])
@@ -241,7 +245,7 @@ export async function getTasksForNewCommit(migrationDir: string): Promise<TaskLi
         const file = resolve(line.substr(1).trim())
         if (status === 'A' && file.startsWith(migrationDir)) {
             const name = basename(file).replace(/\.\w*$/, '')
-            tasks.push(new Task({ type: 'up', migration: new Migration({ name }) }))
+            tasks.push(new Task(undefined, 'up', new Migration(name)))
         }
     }
     return tasks

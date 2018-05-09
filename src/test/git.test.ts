@@ -69,11 +69,12 @@ describe('git', () => {
             await execFile('git', ['commit', '-m', 'fixes migrations'])
             const commits = await getNewCommits()
             let config = await getConfigurationForCommit(commits[0])
-            assert.equal(config.migrationDir, 'migrations')
-            assert.equal(config.migrationOutDir, 'migrations')
+            assert.notStrictEqual(config, null)
+            assert.equal(config!.migrationDir, 'migrations')
+            assert.equal(config!.migrationOutDir, 'migrations')
             config = await getConfigurationForCommit(commits[1])
-            assert.equal(config.migrationDir, 'src/migrations')
-            assert.equal(config.migrationOutDir, 'dist/migrations')
+            assert.equal(config!.migrationDir, 'src/migrations')
+            assert.equal(config!.migrationOutDir, 'dist/migrations')
         })
         it('should return null if no merkelrc is in commit', async () => {
             await fs.writeFile('test.js', 'const one = 1;')
@@ -103,7 +104,7 @@ describe('git', () => {
             assert.equal(commitSequence[2].message, '2')
         })
         it('should return all new commits since a given commit', async () => {
-            let since: Commit
+            let since: Commit | undefined
             for (let i = 0; i < 4; i++) {
                 await fs.appendFile('test.txt', `${i}\n`)
                 await execFile('git', ['add', '.'])
@@ -112,6 +113,7 @@ describe('git', () => {
                     since = await getHead()
                 }
             }
+            assert.notStrictEqual(since, undefined)
             const commitSequence = await getNewCommits(since)
             assert.equal(commitSequence.isReversed, false)
             assert.equal(commitSequence.length, 2)
@@ -125,7 +127,7 @@ describe('git', () => {
         })
         describe('when HEAD is behind since', () => {
             it('should return all commits between HEAD and since in reverse', async () => {
-                let since: Commit
+                let since: Commit | undefined
                 for (let i = 0; i < 4; i++) {
                     await fs.appendFile('test.txt', `${i}\n`)
                     await execFile('git', ['add', '.'])
@@ -134,6 +136,7 @@ describe('git', () => {
                         since = await getHead()
                     }
                 }
+                assert.notStrictEqual(since, undefined)
                 await execFile('git', ['checkout', 'HEAD^^'])
                 const commitSequence = await getNewCommits(since)
                 assert.equal(commitSequence.isReversed, true)
@@ -143,7 +146,7 @@ describe('git', () => {
             })
         })
         it('should throw an UnknownCommitError when the since commit is unknown', async () => {
-            await assert.isRejected(getNewCommits(new Commit({ sha1: 'whatever' })), UnknownCommitError)
+            await assert.isRejected(getNewCommits(new Commit('whatever', 'commit message')), UnknownCommitError)
         })
     })
     describe('getHead', () => {
@@ -174,14 +177,14 @@ describe('git', () => {
             await execFile('git', ['commit', '-m', 'Msg'])
             await execFile('git', ['revert', 'HEAD'])
             const commitSequence = await getNewCommits()
-            assert(isRevertCommit(commitSequence[1].message))
+            assert(isRevertCommit(commitSequence[1].message!))
         })
         it('should just find revert commits', async () => {
             await fs.appendFile('test.txt', 'A')
             await execFile('git', ['add', '.'])
             await execFile('git', ['commit', '-m', 'Msg'])
             const commitSequence = await getNewCommits()
-            assert(!isRevertCommit(commitSequence[0].message))
+            assert(!isRevertCommit(commitSequence[0].message!))
         })
     })
     describe('parseGitLog', () => {
@@ -204,12 +207,18 @@ describe('git', () => {
                         'Revert changes to user model\n\nThis reverts commit b9fb8f15176d958d42dba4f14e35f1bf71ec0be9\nand 900931208ae7dabfd9ede49a78d4a961aa8043ba.',
                     tasks: [
                         {
+                            appliedAt: undefined,
+                            head: undefined,
+                            id: undefined,
                             type: 'down',
                             migration: {
                                 name: 'd9271b98-1a2e-445f-8363-783b2bee0ef0',
                             },
                         },
                         {
+                            appliedAt: undefined,
+                            head: undefined,
+                            id: undefined,
                             type: 'down',
                             migration: {
                                 name: '694b8b6c-3aaa-4e4d-8d54-76515ba90617',
@@ -222,12 +231,18 @@ describe('git', () => {
                     message: 'Change the User model',
                     tasks: [
                         {
+                            appliedAt: undefined,
+                            head: undefined,
+                            id: undefined,
                             type: 'up',
                             migration: {
                                 name: '694b8b6c-3aaa-4e4d-8d54-76515ba90617',
                             },
                         },
                         {
+                            appliedAt: undefined,
+                            head: undefined,
+                            id: undefined,
                             type: 'up',
                             migration: {
                                 name: 'd9271b98-1a2e-445f-8363-783b2bee0ef0',
@@ -252,6 +267,10 @@ describe('git', () => {
             const tasks = await getTasksForNewCommit('migrations')
             assert.deepEqual(tasks, [
                 {
+                    appliedAt: undefined,
+                    head: undefined,
+                    commit: undefined,
+                    id: undefined,
                     migration: {
                         name: 'text',
                     },
