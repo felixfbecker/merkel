@@ -31,14 +31,14 @@ export abstract class DbAdapter {
     public abstract close(): Promise<void>
 
     protected rowToTask(row: TableRow): Task {
-        const task = new Task(
-            row.id,
-            row.type,
-            new Migration(row.name),
-            new Commit({ sha1: row.commit }),
-            new Commit({ sha1: row.head }),
-            row.applied_at
-        )
+        const task = new Task({
+            id: row.id,
+            type: row.type,
+            migration: new Migration(row.name),
+            commit: new Commit({ sha1: row.commit }),
+            head: new Commit({ sha1: row.head }),
+            appliedAt: row.applied_at,
+        })
         return task
     }
 }

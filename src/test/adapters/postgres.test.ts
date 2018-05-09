@@ -54,14 +54,13 @@ describe('PostgresAdapter', () => {
     describe('logMigrationTask', () => {
         it('should log migrations correctly', async () => {
             const date = new Date(Date.now())
-            const task = new Task(
-                undefined,
-                'up',
-                new Migration('testlog'),
-                new Commit({ sha1: '1234' }),
-                new Commit({ sha1: '2345' }),
-                date
-            )
+            const task = new Task({
+                type: 'up',
+                migration: new Migration('testlog'),
+                commit: new Commit({ sha1: '1234' }),
+                head: new Commit({ sha1: '2345' }),
+                appliedAt: date,
+            })
             await adapter.logMigrationTask(task)
             const test = await adapter.getLastMigrationTask()
             assert.deepEqual(test, task)
@@ -71,14 +70,13 @@ describe('PostgresAdapter', () => {
         it('should get the latest migration task', async () => {
             const date = new Date(Date.now())
             await adapter.logMigrationTask(
-                new Task(
-                    undefined,
-                    'up',
-                    new Migration('test'),
-                    new Commit({ sha1: '123' }),
-                    new Commit({ sha1: '234' }),
-                    date
-                )
+                new Task({
+                    type: 'up',
+                    migration: new Migration('test'),
+                    commit: new Commit({ sha1: '123' }),
+                    head: new Commit({ sha1: '234' }),
+                    appliedAt: date,
+                })
             )
             const task = await adapter.getLastMigrationTask()
             assert.deepEqual<any>(task, {
@@ -103,38 +101,35 @@ describe('PostgresAdapter', () => {
     })
     describe('checkIfTaskCanExecute', async () => {
         it('should not run the same migration up twice', async () => {
-            const upTask = new Task(
-                undefined,
-                'up',
-                new Migration('test'),
-                new Commit({ sha1: '1' }),
-                new Commit({ sha1: '2' }),
-                new Date(Date.now())
-            )
+            const upTask = new Task({
+                type: 'up',
+                migration: new Migration('test'),
+                commit: new Commit({ sha1: '1' }),
+                head: new Commit({ sha1: '2' }),
+                appliedAt: new Date(Date.now()),
+            })
             await adapter.logMigrationTask(upTask)
             await assert.isRejected(adapter.checkIfTaskCanExecute(upTask), MigrationRunTwiceError)
         })
         it('should not run the same migration down twice', async () => {
-            const downTask = new Task(
-                undefined,
-                'down',
-                new Migration('test'),
-                new Commit({ sha1: '1' }),
-                new Commit({ sha1: '2' }),
-                new Date(Date.now())
-            )
+            const downTask = new Task({
+                type: 'down',
+                migration: new Migration('test'),
+                commit: new Commit({ sha1: '1' }),
+                head: new Commit({ sha1: '2' }),
+                appliedAt: new Date(Date.now()),
+            })
             await adapter.logMigrationTask(downTask)
             await assert.isRejected(adapter.checkIfTaskCanExecute(downTask), MigrationRunTwiceError)
         })
         it('should not run a down migration first', async () => {
-            const task = new Task(
-                undefined,
-                'down',
-                new Migration('test'),
-                new Commit({ sha1: '1' }),
-                new Commit({ sha1: '2' }),
-                new Date(Date.now())
-            )
+            const task = new Task({
+                type: 'down',
+                migration: new Migration('test'),
+                commit: new Commit({ sha1: '1' }),
+                head: new Commit({ sha1: '2' }),
+                appliedAt: new Date(Date.now()),
+            })
             await assert.isRejected(adapter.checkIfTaskCanExecute(task), FirstDownMigrationError)
         })
     })

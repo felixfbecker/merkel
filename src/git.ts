@@ -218,7 +218,7 @@ export function parseGitLog(gitLog: string): CommitSequence {
         for (const command of commands) {
             const type = command.shift() as TaskType
             for (const name of command) {
-                commit.tasks.push(new Task(undefined, type, new Migration(name), commit))
+                commit.tasks.push(new Task({ type, migration: new Migration(name), commit }))
             }
         }
         commits.push(commit)
@@ -250,7 +250,7 @@ export async function getTasksForNewCommit(migrationDir: string): Promise<TaskLi
         const file = resolve(line.substr(1).trim())
         if (status === 'A' && file.startsWith(migrationDir)) {
             const name = basename(file).replace(/\.\w*$/, '')
-            tasks.push(new Task(undefined, 'up', new Migration(name)))
+            tasks.push(new Task({ type: 'up', migration: new Migration(name) }))
         }
     }
     return tasks

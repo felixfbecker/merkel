@@ -71,7 +71,7 @@ describe('migration', () => {
         describe('execute()', () => {
             it('should run all its tasks', async () => {
                 const taskList = new TaskList()
-                const task = new Task(undefined, 'up', new Migration('whatever'))
+                const task = new Task({ type: 'up', migration: new Migration('whatever') })
                 taskList.push(task)
                 const stub = sinon.stub(task, 'execute')
                 try {
@@ -85,8 +85,8 @@ describe('migration', () => {
         describe('toString()', () => {
             it('should return a string of merkel commands', async () => {
                 const taskList = TaskList.from([
-                    new Task(undefined, 'down', new Migration('a4bdf4cc-f7ed-4785-8bdb-2abfb5ed2025')),
-                    new Task(undefined, 'up', new Migration('e55d537d-ad67-40e6-9ef1-50320e530676')),
+                    new Task({ type: 'down', migration: new Migration('a4bdf4cc-f7ed-4785-8bdb-2abfb5ed2025') }),
+                    new Task({ type: 'up', migration: new Migration('e55d537d-ad67-40e6-9ef1-50320e530676') }),
                 ])
                 assert.equal(
                     taskList.toString(),
@@ -95,10 +95,10 @@ describe('migration', () => {
             })
             it('should wrap long commands', async () => {
                 const taskList = TaskList.from([
-                    new Task(undefined, 'down', new Migration('a4bdf4cc-f7ed-4785-8bdb-2abfb5ed2025')),
-                    new Task(undefined, 'up', new Migration('e55d537d-ad67-40e6-9ef1-50320e530676')),
-                    new Task(undefined, 'up', new Migration('15ca72e9-241c-4fcd-97ad-aeb367403a27')),
-                    new Task(undefined, 'up', new Migration('e55d537d-ad67-40e6-9ef1-50320e530676')),
+                    new Task({ type: 'down', migration: new Migration('a4bdf4cc-f7ed-4785-8bdb-2abfb5ed2025') }),
+                    new Task({ type: 'up', migration: new Migration('e55d537d-ad67-40e6-9ef1-50320e530676') }),
+                    new Task({ type: 'up', migration: new Migration('15ca72e9-241c-4fcd-97ad-aeb367403a27') }),
+                    new Task({ type: 'up', migration: new Migration('e55d537d-ad67-40e6-9ef1-50320e530676') }),
                 ])
                 assert.equal(
                     taskList.toString(),
@@ -129,7 +129,7 @@ describe('migration', () => {
         after(() => client.end())
         describe('invert()', () => {
             it('should return a new task that has the inverse type of the task', () => {
-                const task = new Task(undefined, 'up', new Migration('whatever'))
+                const task = new Task({ type: 'up', migration: new Migration('whatever') })
                 const inverted = task.invert()
                 assert.notEqual(task, inverted)
                 assert.equal(inverted.type, 'down')
@@ -137,7 +137,7 @@ describe('migration', () => {
         })
         describe('execute()', () => {
             it('should execute an up task', async () => {
-                const task = new Task(undefined, 'up', new Migration('test_migration'))
+                const task = new Task({ type: 'up', migration: new Migration('test_migration') })
                 const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
                 const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 await task.execute(__dirname + '/migrations', adapter, head, trigger)
@@ -148,7 +148,7 @@ describe('migration', () => {
                 assert.equal(rows.length, 1)
             })
             it('should throw a MigrationNotFoundError if the migration is not existent', async () => {
-                const task = new Task(undefined, 'up', new Migration('not_found'))
+                const task = new Task({ type: 'up', migration: new Migration('not_found') })
                 const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
                 const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 await assert.isRejected(
@@ -157,7 +157,7 @@ describe('migration', () => {
                 )
             })
             it('should throw a MigrationLoadError if the migration fails loading', async () => {
-                const task = new Task(undefined, 'up', new Migration('error_load'))
+                const task = new Task({ type: 'up', migration: new Migration('error_load') })
                 const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
                 const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 await assert.isRejected(
@@ -166,7 +166,7 @@ describe('migration', () => {
                 )
             })
             it('should throw a TaskTypeNotFoundError if the migration has no up or down function', async () => {
-                const task = new Task(undefined, 'up', new Migration('no_up'))
+                const task = new Task({ type: 'up', migration: new Migration('no_up') })
                 const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
                 const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 await assert.isRejected(
@@ -175,7 +175,7 @@ describe('migration', () => {
                 )
             })
             it('should throw a MigrationExecutionError when the migration returns a rejected promise', async () => {
-                const task = new Task(undefined, 'up', new Migration('error_async'))
+                const task = new Task({ type: 'up', migration: new Migration('error_async') })
                 const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
                 const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 await assert.isRejected(
@@ -184,7 +184,7 @@ describe('migration', () => {
                 )
             })
             it('should throw a MigrationExecutionError when the migration throws sync', async () => {
-                const task = new Task(undefined, 'up', new Migration('error_sync'))
+                const task = new Task({ type: 'up', migration: new Migration('error_sync') })
                 const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
                 const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 await assert.isRejected(
@@ -193,7 +193,7 @@ describe('migration', () => {
                 )
             })
             it('should throw a MigrationExecutionError when the migration would crash the process', async () => {
-                const task = new Task(undefined, 'up', new Migration('error_crash'))
+                const task = new Task({ type: 'up', migration: new Migration('error_crash') })
                 const head = new Commit({ sha1: 'HEADCOMMITSHA1' })
                 const trigger = new Commit({ sha1: 'TRIGGERCOMMITSHA1' })
                 let listener: ((error: Error) => void) | undefined
@@ -215,7 +215,7 @@ describe('migration', () => {
         })
         describe('toString', () => {
             it('should throw if the task type is unknown', async () => {
-                const task = new Task(undefined, 'd' as any, new Migration('test'))
+                const task = new Task({ type: 'd' as any, migration: new Migration('test') })
                 assert.throws(() => task.toString(), UnknownTaskTypeError)
             })
         })

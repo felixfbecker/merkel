@@ -173,7 +173,7 @@ describe('index', () => {
                     lastTask: null,
                 })
                 const tasks = new TaskList()
-                tasks.push(new Task(undefined, 'up', new Migration('user')))
+                tasks.push(new Task({ type: 'up', migration: new Migration('user') }))
                 const commit = new Commit({ sha1: '0c0302301' })
                 commit.tasks = tasks
                 status.newCommits.push(commit)
@@ -187,14 +187,14 @@ describe('index', () => {
                 const status = new Status({
                     head: new Commit({ sha1: '0c0302301', message: 'top' }),
                     newCommits: new CommitSequence(),
-                    lastTask: new Task(
-                        1,
-                        'up',
-                        new Migration('user'),
-                        new Commit({ sha1: '9913944', message: 'initial' }),
-                        new Commit({ sha1: '9991920', message: 'header' }),
-                        new Date(0)
-                    ),
+                    lastTask: new Task({
+                        id: 1,
+                        type: 'up',
+                        migration: new Migration('user'),
+                        commit: new Commit({ sha1: '9913944', message: 'initial' }),
+                        head: new Commit({ sha1: '9991920', message: 'header' }),
+                        appliedAt: new Date(0),
+                    }),
                 })
                 const output = status.toString()
                 assert.include(output, '▲ UP   user')
