@@ -1,5 +1,5 @@
 import chalk from 'chalk'
-import { ChildProcess, execFile, spawn } from 'mz/child_process'
+import { execFile, spawn } from 'mz/child_process'
 import * as fs from 'mz/fs'
 import * as path from 'path'
 import { basename, resolve } from 'path'

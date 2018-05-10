@@ -165,7 +165,7 @@ export class Task {
             let exceptionHandler: (() => void) | undefined
             try {
                 await Promise.race([
-                    new Promise<never>((resolve, reject) => {
+                    new Promise<never>((_, reject) => {
                         exceptionHandler = reject
                         process.on('uncaughtException', reject)
                     }),
@@ -182,7 +182,7 @@ export class Task {
         this.head = head
         this.commit = commit
         this.appliedAt = new Date()
-        await adapter.logMigrationTask(this)
+        await adapter.finishMigrationTask(this)
     }
 
     /**

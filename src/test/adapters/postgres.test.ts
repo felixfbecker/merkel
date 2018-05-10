@@ -61,7 +61,8 @@ describe('PostgresAdapter', () => {
                 head: new Commit({ sha1: '2345' }),
                 appliedAt: date,
             })
-            await adapter.logMigrationTask(task)
+            await adapter.beginMigrationTask(task)
+            await adapter.finishMigrationTask(task)
             const test = await adapter.getLastMigrationTask()
             assert.deepEqual(test, task)
         })
@@ -69,17 +70,17 @@ describe('PostgresAdapter', () => {
     describe('getLastMigrationTask', () => {
         it('should get the latest migration task', async () => {
             const date = new Date(Date.now())
-            await adapter.logMigrationTask(
-                new Task({
-                    type: 'up',
-                    migration: new Migration('test'),
-                    commit: new Commit({ sha1: '123' }),
-                    head: new Commit({ sha1: '234' }),
-                    appliedAt: date,
-                })
-            )
-            const task = await adapter.getLastMigrationTask()
-            assert.deepEqual<any>(task, {
+            const task = new Task({
+                type: 'up',
+                migration: new Migration('test'),
+                commit: new Commit({ sha1: '123' }),
+                head: new Commit({ sha1: '234' }),
+                appliedAt: date,
+            })
+            await adapter.beginMigrationTask(task)
+            await adapter.finishMigrationTask(task)
+            const lastTask = await adapter.getLastMigrationTask()
+            assert.deepEqual<any>(lastTask, {
                 id: 1,
                 appliedAt: date,
                 type: 'up',
@@ -108,7 +109,8 @@ describe('PostgresAdapter', () => {
                 head: new Commit({ sha1: '2' }),
                 appliedAt: new Date(Date.now()),
             })
-            await adapter.logMigrationTask(upTask)
+            await adapter.beginMigrationTask(upTask)
+            await adapter.finishMigrationTask(upTask)
             await assert.isRejected(adapter.checkIfTaskCanExecute(upTask), MigrationRunTwiceError)
         })
         it('should not run the same migration down twice', async () => {
@@ -119,7 +121,8 @@ describe('PostgresAdapter', () => {
                 head: new Commit({ sha1: '2' }),
                 appliedAt: new Date(Date.now()),
             })
-            await adapter.logMigrationTask(downTask)
+            await adapter.beginMigrationTask(downTask)
+            await adapter.finishMigrationTask(downTask)
             await assert.isRejected(adapter.checkIfTaskCanExecute(downTask), MigrationRunTwiceError)
         })
         it('should not run a down migration first', async () => {

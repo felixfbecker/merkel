@@ -1,6 +1,6 @@
 import * as pg from 'pg'
 import { SQL } from 'sql-template-strings'
-import { DbAdapter } from '../adapter'
+import { DbAdapter, PendingMigrationFoundError } from '../adapter'
 import { FirstDownMigrationError, MigrationRunTwiceError, Task } from '../migration'
 
 export class PostgresAdapter extends DbAdapter {
@@ -37,13 +37,15 @@ export class PostgresAdapter extends DbAdapter {
                 "type" merkel_migration_type,
                 "commit" TEXT,
                 "head" TEXT NOT NULL,
-                "applied_at" TIMESTAMP WITH TIME ZONE NOT NULL
+                "applied_at" TIMESTAMP WITH TIME ZONE
             );
         `)
+        // migrate schema from merkel <= 0.19
+        await this.client.query(`ALTER TABLE "merkel_meta" ALTER COLUMN "applied_at" DROP NOT NULL`)
     }
 
     public close(): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
+        return new Promise<void>(resolve => {
             this.client.on('end', resolve)
             // tslint:disable-next-line:no-floating-promises
             this.client.end()
@@ -58,6 +60,7 @@ export class PostgresAdapter extends DbAdapter {
         const { rows } = await this.client.query(`
             SELECT "id", "name", "applied_at", "type", "commit", "head"
             FROM "merkel_meta"
+            WHERE "applied_at" IS NOT NULL
             ORDER BY "id" DESC
             LIMIT 1
         `)
@@ -65,21 +68,49 @@ export class PostgresAdapter extends DbAdapter {
     }
 
     /**
-     * Logs an executed task to the database. Sets the task ID
+     * Logs a task to the database. Sets the task ID
      */
-    public async logMigrationTask(task: Task): Promise<void> {
-        const { rows } = await this.client.query(SQL`
-            INSERT INTO merkel_meta ("name", "type", "commit", "head", "applied_at")
-            VALUES (
-                ${task.migration.name},
-                ${task.type},
-                ${task.commit ? task.commit.sha1 : null},
-                ${task.head ? task.head.sha1 : null},
-                ${task.appliedAt}
-            )
-            RETURNING id
+    public async beginMigrationTask(task: Task): Promise<void> {
+        if (!task.head) {
+            throw new Error('Task has no HEAD')
+        }
+        await this.client.query(`BEGIN TRANSACTION`)
+        try {
+            await this.client.query(`LOCK TABLE "merkel_meta"`)
+            if (await this.hasPendingMigration()) {
+                throw new PendingMigrationFoundError()
+            }
+            const { rows } = await this.client.query(SQL`
+                INSERT INTO merkel_meta ("name", "type", "commit", "head")
+                VALUES (
+                    ${task.migration.name},
+                    ${task.type},
+                    ${task.commit ? task.commit.sha1 : null},
+                    ${task.head.sha1}
+                )
+                RETURNING id
+            `)
+            await this.client.query(`COMMIT`)
+            task.id = rows[0].id
+        } finally {
+            await this.client.query(`ROLLBACK`)
+        }
+    }
+
+    /**
+     * Marks the task as finished
+     */
+    public async finishMigrationTask(task: Task): Promise<void> {
+        const head = task.head ? task.head.sha1 : null
+        const commit = task.commit ? task.commit.sha1 : null
+        await this.client.query(SQL`
+            UPDATE merkel_meta
+            SET
+                "applied_at" = ${task.appliedAt},
+                "head" = ${head},
+                "commit" = ${commit}
+            WHERE "id" = ${task.id}
         `)
-        task.id = rows[0].id
     }
 
     /**
@@ -91,6 +122,7 @@ export class PostgresAdapter extends DbAdapter {
             SELECT "type"
             FROM "merkel_meta"
             WHERE "name" = ${task.migration.name}
+            AND "applied_at" IS NOT NULL
             ORDER BY "id" DESC
             LIMIT 1
         `)
@@ -105,5 +137,15 @@ export class PostgresAdapter extends DbAdapter {
                 throw new MigrationRunTwiceError(task.migration, 'down')
             }
         }
+    }
+
+    protected async hasPendingMigration(): Promise<boolean> {
+        const { rows } = await this.client.query(SQL`
+            SELECT "type"
+            FROM "merkel_meta"
+            WHERE "applied_at" IS NULL
+            LIMIT 1
+        `)
+        return rows.length !== 0
     }
 }
