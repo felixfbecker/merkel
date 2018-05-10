@@ -19,7 +19,7 @@
     "lint": "npm run tslint && npm run prettier",
     "tslint": "tslint -c tslint.json -p tsconfig.json \"src/**/*.ts\"",
     "prettier": "prettier --config ./prettier.config.js --write --list-different '**/*.{ts,js?(on),md}'",
-    "typedoc": "typedoc --module commonjs --target es2015 --mode modules --readme none --out typedoc src",
+    "typedoc": "typedoc --module commonjs --target es2015 --mode modules --ignoreCompilerErrors --readme none --out typedoc src",
     "test": "mocha \"dist/test/**/*.test.js\" --exit --timeout 5000 --require source-map-support/register",
     "cover": "nyc --all --require source-map-support/register mocha --exit --timeout 5000 \"dist/test/**/*.test.js\"",
     "semantic-release": "semantic-release",
