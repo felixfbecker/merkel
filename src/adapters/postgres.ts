@@ -71,6 +71,7 @@ export class PostgresAdapter extends DbAdapter {
      * Logs a task to the database. Sets the task ID
      */
     public async beginMigrationTask(task: Task): Promise<void> {
+        /* istanbul ignore if */
         if (!task.head) {
             throw new Error('Task has no HEAD')
         }
@@ -78,6 +79,7 @@ export class PostgresAdapter extends DbAdapter {
         try {
             await this.client.query(`LOCK TABLE "merkel_meta"`)
             if (await this.hasPendingMigration()) {
+                /* istanbul ignore next */
                 throw new PendingMigrationFoundError()
             }
             const { rows } = await this.client.query(SQL`
