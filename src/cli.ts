@@ -8,12 +8,14 @@ import { createAdapterFromUrl } from './adapter'
 import { getHead } from './git'
 import { addGitHook, HookAlreadyFoundError } from './git'
 import {
+    CLI_LOGGER,
     createConfig,
     createMigrationDir,
     generate,
     getConfigurationForCommit,
     getStatus,
     isMerkelRepository,
+    PendingMigrationFoundError,
     prepareCommitMsg,
 } from './index'
 import { Migration, Task, TaskType } from './migration'
@@ -133,12 +135,12 @@ yargs.command(
                     when: () => !!argv.db,
                 },
             ])
-            if (await createMigrationDir(migrationDir as string)) {
-                process.stdout.write(`Created ${chalk.cyan(migrationDir as string)}\n`)
+            if (await createMigrationDir(migrationDir)) {
+                process.stdout.write(`Created ${chalk.cyan(migrationDir)}\n`)
             }
             await createConfig({
-                migrationDir: migrationDir as string,
-                migrationOutDir: (migrationOutDir as string) || './migrations',
+                migrationDir,
+                migrationOutDir: migrationOutDir || './migrations',
             })
             process.stdout.write(`Created ${chalk.cyan(path.join('.', '.merkelrc.json'))}\n`)
             if (initMetaNow) {
@@ -249,6 +251,8 @@ yargs.command(
             const adapter = createAdapterFromUrl(argv.db!)
             await adapter.init()
             const head = await getHead()
+            // wait for current migration to finish
+            await adapter.waitForPending(CLI_LOGGER)
             const status = await getStatus(adapter, head)
             process.stdout.write('\n' + status.toString())
             if (status.newCommits.some(commit => commit.tasks.length > 0)) {
@@ -283,33 +287,62 @@ yargs.command(
         try {
             const adapter = createAdapterFromUrl(argv.db!)
             await adapter.init()
-            const head = await getHead()
-            const status = await getStatus(adapter, head)
-            process.stdout.write(status.toString())
-            if (status.newCommits.some(commit => commit.tasks.length > 0)) {
-                if (argv.confirm) {
-                    const answer = await inquirer.prompt<{ continue: boolean }>({
-                        type: 'confirm',
-                        name: 'continue',
-                        message: 'Continue?',
-                    })
-                    if (!answer.continue) {
-                        process.exit(0)
+            while (true) {
+                const head = await getHead()
+                const status = await getStatus(adapter, head)
+                process.stdout.write(status.toString())
+                const tasks = status.newCommits.reduce<Task[]>((prev, next) => prev.concat(next.tasks), [])
+                if (tasks.length > 0) {
+                    if (argv.confirm) {
+                        const answer = await inquirer.prompt<{ continue: boolean }>({
+                            type: 'confirm',
+                            name: 'continue',
+                            message: 'Continue?',
+                        })
+                        if (!answer.continue) {
+                            process.exit(0)
+                        }
+                        process.stdout.write('\n')
                     }
-                    process.stdout.write('\n')
-                }
-                process.stdout.write('Starting migration\n\n')
-                for (const commit of status.newCommits) {
-                    process.stdout.write(`${chalk.yellow(commit.shortSha1)} ${commit.subject}\n`)
-                    for (const task of commit.tasks) {
-                        process.stdout.write(task.toString() + ' ...')
-                        const interval = setInterval(() => process.stdout.write('.'), 100)
-                        await task.execute(argv.migrationOutDir!, adapter, head, commit)
-                        clearInterval(interval)
-                        process.stdout.write(' Success\n')
+
+                    process.stdout.write('Starting migration\n\n')
+
+                    const hasChanged = await adapter.waitForPending(CLI_LOGGER)
+
+                    if (hasChanged) {
+                        process.stdout.write('The migrations have changed, reloading..\n\n')
+                        continue
                     }
+                    // create pending tasks
+                    for (const task of tasks) {
+                        try {
+                            task.head = head
+                            await adapter.beginMigrationTask(task)
+                        } catch (error) {
+                            if (error instanceof PendingMigrationFoundError) {
+                                continue
+                            } else {
+                                throw error
+                            }
+                        }
+                    }
+
+                    for (const commit of status.newCommits) {
+                        process.stdout.write(`${chalk.yellow(commit.shortSha1)} ${commit.subject}\n`)
+                        for (const task of commit.tasks) {
+                            process.stdout.write(task.toString() + ' ...')
+                            const interval = setInterval(() => process.stdout.write('.'), 100)
+                            try {
+                                await task.execute(argv.migrationOutDir!, adapter, head, commit)
+                            } finally {
+                                clearInterval(interval)
+                            }
+                            process.stdout.write(' Success\n')
+                        }
+                    }
+                    process.stdout.write(chalk.green('\nAll migrations successful\n'))
                 }
-                process.stdout.write(chalk.green('\nAll migrations successful\n'))
+                break
             }
             process.exit(0)
         } catch (err) {
@@ -328,13 +361,29 @@ const migrationCommand = (type: TaskType) => async (argv: MigrationCommandArgv) 
     try {
         const adapter = createAdapterFromUrl(argv.db!)
         await adapter.init()
-        const head = await getHead()
-        for (const name of argv.migrations!) {
-            const task = new Task({ type, migration: new Migration(name) })
+        const tasks = argv.migrations!.map(name => new Task({ type, migration: new Migration(name) }))
+        while (true) {
+            await adapter.waitForPending(CLI_LOGGER)
+            const head = await getHead()
+            for (const task of tasks) {
+                try {
+                    task.head = head
+                    await adapter.beginMigrationTask(task)
+                } catch (error) {
+                    if (error instanceof PendingMigrationFoundError) {
+                        continue
+                    } else {
+                        throw error
+                    }
+                }
+            }
+            break
+        }
+        for (const task of tasks) {
             process.stdout.write(`${task.toString()} ...`)
             const interval = setInterval(() => process.stdout.write('.'), 100)
             try {
-                await task.execute(argv.migrationOutDir!, adapter, head)
+                await task.execute(argv.migrationOutDir!, adapter)
             } finally {
                 clearInterval(interval)
             }

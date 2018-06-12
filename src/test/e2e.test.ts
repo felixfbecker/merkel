@@ -8,7 +8,7 @@ import * as path from 'path'
 import * as pg from 'pg'
 import { createAdapterFromUrl } from '../adapter'
 import { addGitHook, getHead } from '../git'
-import { createConfig, createMigrationDir, generate, getStatus, SILENT_LOGGER } from '../index'
+import { createConfig, createMigrationDir, generate, getStatus, SILENT_LOGGER, Task } from '../index'
 
 const PATH = path.resolve(__dirname + '/../../bin') + path.delimiter + process.env.PATH
 
@@ -55,7 +55,23 @@ describe('E2E', () => {
         await execFile('git', ['commit', '-m', `first migration\n\n[merkel up ${uuid}]`], { env: { PATH } })
         let status = await getStatus(adapter, await getHead())
         assert.equal(status.newCommits.length, 1)
-        await status.executePendingTasks('migrations', adapter, SILENT_LOGGER)
+        assert.equal(status.newCommits[0].tasks.length, 1)
+        // add pending task
+        await adapter.beginMigrationTask({ ...status.newCommits[0].tasks[0], head: await getHead() } as Task)
+        let shouldHaveFinished = false
+        // begin execution, this should wait
+        const promise = (async () => {
+            await status.executePendingTasks('migrations', adapter, SILENT_LOGGER)
+            if (shouldHaveFinished) {
+                return
+            }
+            throw new AssertionError({ message: 'Finished early' })
+        })()
+        // delete pending task
+        await client.query(`DELETE FROM "merkel_meta"`)
+        shouldHaveFinished = true
+        // requested migration should begin now and finish correctly
+        await promise
         const { rows } = await client.query(`SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'new_table'`)
         assert.equal(rows.length, 1)
         await execFile('git', ['revert', '--no-commit', 'HEAD'])

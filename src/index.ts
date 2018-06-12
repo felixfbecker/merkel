@@ -53,19 +53,41 @@ export class Status {
         adapter: DbAdapter,
         logger: Logger = CLI_LOGGER
     ): Promise<void> {
-        logger.log('Starting migration\n\n')
-        for (const commit of this.newCommits) {
-            logger.log(`${chalk.yellow.bold(commit.shortSha1)} ${commit.subject}\n`)
-            for (const task of commit.tasks) {
-                logger.log(task.toString() + '...')
-                /* istanbul ignore next */
-                const interval = setInterval(() => logger.log('.'), 100)
-                await task.execute(migrationDir, adapter, this.head, commit)
-                clearInterval(interval)
-                logger.log(' Success\n')
+        while (true) {
+            logger.log(this.toString())
+            const tasks = this.newCommits.reduce<Task[]>((prev, next) => prev.concat(next.tasks), [])
+            if (tasks.length > 0) {
+                logger.log('Starting migration\n\n')
+
+                const hasChanged = await adapter.waitForPending(logger)
+
+                if (hasChanged) {
+                    logger.log('The migrations have changed, reloading..\n\n')
+                    continue
+                }
+                // create pending tasks
+                for (const task of tasks) {
+                    task.head = this.head
+                    await adapter.beginMigrationTask(task)
+                }
+
+                for (const commit of this.newCommits) {
+                    logger.log(`${chalk.yellow.bold(commit.shortSha1)} ${commit.subject}\n`)
+                    for (const task of commit.tasks) {
+                        logger.log(task.toString() + ' ...')
+                        const interval = setInterval(() => logger.log('.'), 100)
+                        try {
+                            await task.execute(migrationDir, adapter, this.head, commit)
+                        } finally {
+                            clearInterval(interval)
+                        }
+                        logger.log(' Success\n')
+                    }
+                }
+                logger.log(chalk.green('\nAll migrations successful\n'))
             }
+            break
         }
-        logger.log(chalk.green('\nAll migrations successful\n'))
     }
 
     /** Returns a string that can be printed to a CLI */
