@@ -310,7 +310,7 @@ yargs.command(
                     const hasChanged = await adapter.waitForPending(CLI_LOGGER)
 
                     if (hasChanged) {
-                        process.stdout.write('The migrations have changed, reloading..\n\n')
+                        process.stdout.write('The pending migrations have changed, reloading..\n\n')
                         continue
                     }
                     // create pending tasks
@@ -363,7 +363,11 @@ const migrationCommand = (type: TaskType) => async (argv: MigrationCommandArgv) 
         await adapter.init()
         const tasks = argv.migrations!.map(name => new Task({ type, migration: new Migration(name) }))
         while (true) {
-            await adapter.waitForPending(CLI_LOGGER)
+            if (await adapter.waitForPending(CLI_LOGGER)) {
+                process.stdout.write('The pending migrations have changed, reloading..\n\n')
+                // retry
+                continue
+            }
             const head = await getHead()
             for (const task of tasks) {
                 try {
@@ -377,19 +381,19 @@ const migrationCommand = (type: TaskType) => async (argv: MigrationCommandArgv) 
                     }
                 }
             }
+            for (const task of tasks) {
+                process.stdout.write(`${task.toString()} ...`)
+                const interval = setInterval(() => process.stdout.write('.'), 100)
+                try {
+                    await task.execute(argv.migrationOutDir!, adapter, head)
+                } finally {
+                    clearInterval(interval)
+                }
+                process.stdout.write(' Success\n')
+            }
+            process.stdout.write('\n' + chalk.green.bold('Migration successful') + '\n')
             break
         }
-        for (const task of tasks) {
-            process.stdout.write(`${task.toString()} ...`)
-            const interval = setInterval(() => process.stdout.write('.'), 100)
-            try {
-                await task.execute(argv.migrationOutDir!, adapter)
-            } finally {
-                clearInterval(interval)
-            }
-            process.stdout.write(' Success\n')
-        }
-        process.stdout.write('\n' + chalk.green.bold('Migration successful') + '\n')
     } catch (err) {
         process.stderr.write('\n' + chalk.red(err.stack))
         process.exit(1)
