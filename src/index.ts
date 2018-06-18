@@ -62,7 +62,7 @@ export class Status {
                 const hasChanged = await adapter.waitForPending(logger)
 
                 if (hasChanged) {
-                    logger.log('The migrations have changed, reloading..\n\n')
+                    logger.log('The pending migrations have changed, reloading..\n\n')
                     continue
                 }
                 // create pending tasks
