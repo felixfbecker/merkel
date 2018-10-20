@@ -34,7 +34,7 @@ export class PostgresAdapter extends DbAdapter {
             CREATE TABLE IF NOT EXISTS "merkel_meta" (
                 "id" SERIAL NOT NULL PRIMARY KEY,
                 "name" TEXT NOT NULL,
-                "type" merkel_migration_type,
+                "type" merkel_migration_type NOT NULL,
                 "commit" TEXT,
                 "head" TEXT NOT NULL,
                 "applied_at" TIMESTAMP WITH TIME ZONE
