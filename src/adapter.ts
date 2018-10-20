@@ -30,9 +30,9 @@ export interface TableRow {
     id: number
     name: string
     type: TaskType
-    commit: string
+    commit: string | null
     head: string
-    applied_at: Date
+    applied_at: Date | null
 }
 
 export abstract class DbAdapter {
@@ -85,9 +85,9 @@ export abstract class DbAdapter {
             id: row.id,
             type: row.type,
             migration: new Migration(row.name),
-            commit: new Commit({ sha1: row.commit }),
+            commit: row.commit ? new Commit({ sha1: row.commit }) : undefined,
             head: new Commit({ sha1: row.head }),
-            appliedAt: row.applied_at,
+            appliedAt: row.applied_at || undefined,
         })
         return task
     }
