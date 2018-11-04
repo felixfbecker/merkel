@@ -54,7 +54,7 @@ export class Commit {
      */
     public async loadSubject(): Promise<void> {
         if (this.message === undefined) {
-            const [stdout] = await execFile('git', ['show', '--format=%B', this.sha1])
+            const [stdout] = await execFile('git', ['show', '--format=%B', '--no-patch', this.sha1])
             this.message = stdout.toString()
         }
     }
