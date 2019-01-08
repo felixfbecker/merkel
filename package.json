@@ -43,7 +43,7 @@
     "@types/chai": "^4.1.3",
     "@types/chai-as-promised": "^7.1.0",
     "@types/del": "^3.0.1",
-    "@types/globby": "^6.1.0",
+    "@types/globby": "^8.0.0",
     "@types/inquirer": "0.0.42",
     "@types/mkdirp": "^0.5.1",
     "@types/mocha": "^5.0.0",
