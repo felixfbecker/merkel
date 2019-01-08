@@ -287,7 +287,7 @@ yargs.command(
         try {
             const adapter = createAdapterFromUrl(argv.db!)
             await adapter.init()
-            while (true) {
+            outerLoop: while (true) {
                 const head = await getHead()
                 const status = await getStatus(adapter, head)
                 process.stdout.write(status.toString())
@@ -313,23 +313,20 @@ yargs.command(
                         process.stdout.write('The pending migrations have changed, reloading..\n\n')
                         continue
                     }
-                    // create pending tasks
-                    for (const task of tasks) {
-                        try {
-                            task.head = head
-                            await adapter.beginMigrationTask(task)
-                        } catch (error) {
-                            if (error instanceof PendingMigrationFoundError) {
-                                continue
-                            } else {
-                                throw error
-                            }
-                        }
-                    }
 
                     for (const commit of status.newCommits) {
                         process.stdout.write(`${chalk.yellow(commit.shortSha1)} ${commit.subject}\n`)
                         for (const task of commit.tasks) {
+                            try {
+                                task.head = head
+                                await adapter.beginMigrationTask(task)
+                            } catch (error) {
+                                if (error instanceof PendingMigrationFoundError) {
+                                    continue outerLoop
+                                } else {
+                                    throw error
+                                }
+                            }
                             process.stdout.write(task.toString() + ' ...')
                             const interval = setInterval(() => process.stdout.write('.'), 100)
                             try {
