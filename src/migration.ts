@@ -147,9 +147,12 @@ export class Task {
         await adapter.checkIfTaskCanExecute(this)
         let migrationExports: any
         if (commit) {
-            const config = await getConfigurationForCommit(commit)
-            if (config && config.migrationOutDir) {
-                migrationDir = config.migrationOutDir
+            const currentConfig = await getConfigurationForCommit(new Commit({ sha1: 'HEAD' }))
+            if (!(currentConfig && currentConfig.configLookback === false)) {
+                const config = await getConfigurationForCommit(commit)
+                if (config && config.migrationOutDir) {
+                    migrationDir = config.migrationOutDir
+                }
             }
         }
         const path = await this.migration.getPath(migrationDir)

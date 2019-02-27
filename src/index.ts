@@ -194,13 +194,18 @@ export interface GenerateOptions {
 /** Options for [[createConfig]] */
 export interface MerkelConfiguration {
     /** The directory where new migration files should be generated */
-    migrationDir: string
+    migrationDir?: string
 
     /**
      * The directory where the JavaScript migration files can be found.
      * Can differ from `migrationDir` when using a transpiler.
      */
-    migrationOutDir: string
+    migrationOutDir?: string
+
+    /**
+     * Whether to use the config for each migration based on the commit where it was added.
+     */
+    configLookback?: boolean
 }
 
 /**
