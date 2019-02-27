@@ -2,7 +2,7 @@ import chalk from 'chalk'
 import * as fs from 'mz/fs'
 import { resolve, sep } from 'path'
 import { DbAdapter } from './adapter'
-import { Commit, getConfigurationForCommit, getHead } from './git'
+import { Commit, getConfigurationForCommit } from './git'
 
 export type TaskType = 'up' | 'down'
 
@@ -147,7 +147,7 @@ export class Task {
         await adapter.checkIfTaskCanExecute(this)
         let migrationExports: any
         if (commit) {
-            const currentConfig = await getConfigurationForCommit(await getHead())
+            const currentConfig = await getConfigurationForCommit(new Commit({ sha1: 'HEAD' }))
             if (!(currentConfig && currentConfig.configLookback === false)) {
                 const config = await getConfigurationForCommit(commit)
                 if (config && config.migrationOutDir) {
