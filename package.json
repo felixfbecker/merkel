@@ -28,7 +28,7 @@
   "author": "Felix Becker <felix.b@outlook.com>",
   "license": "ISC",
   "dependencies": {
-    "chalk": "^2.3.0",
+    "chalk": "^3.0.0",
     "inquirer": "^6.0.0",
     "mkdirp": "^0.5.1",
     "mz": "^2.4.0",
