@@ -61,7 +61,7 @@
     "mocha": "^5.1.1",
     "nyc": "^13.0.0",
     "pg": "^7.4.3",
-    "prettier": "1.12.1",
+    "prettier": "1.19.1",
     "rimraf": "^2.5.4",
     "semantic-release": "^15.4.0",
     "sinon": "^7.0.0",
