@@ -67,7 +67,7 @@
     "sinon": "^7.0.0",
     "source-map-support": "^0.5.5",
     "tslint": "^5.10.0",
-    "typedoc": "^0.11.0",
+    "typedoc": "^0.25.0",
     "typescript": "^3.0.0",
     "validate-commit-msg": "^2.14.0"
   },
